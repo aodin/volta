@@ -28,7 +28,7 @@ func TestLogRequest(t *testing.T) {
 
 	// TODO Check the actual content of the logged request
 	// Check the content of the logged request, minus the timestamp
-	actual := buffer.String()[20:len(buffer.String()) - 1]
+	actual := buffer.String()[20 : len(buffer.String())-1]
 	expected := `"GET /" 127.0.0.1 "" "Go 1.1 package http"`
 	if actual != expected {
 		t.Errorf("Unexpected log entry: %s != %s", actual, expected)
