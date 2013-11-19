@@ -86,14 +86,15 @@ func Pbkdf2(cleartext, salt []byte, rounds int, h func() hash.Hash) []byte {
 // TODO declare private?
 type PBKDF2_Base struct {
 	BaseHasher
-	Digest func() hash.Hash // TODO move to base hasher?
+	rounds int64
+	digest func() hash.Hash // TODO move to base hasher?
 }
 
 func (pbkH *PBKDF2_Base) Encode(cleartext, salt string) string {
 	// TODO these []byte conversions are a bit silly
 	rounds := 10000
-	hashed := EncodeBase64String(Pbkdf2([]byte(cleartext), []byte(salt), rounds, pbkH.Digest))
-	return strings.Join([]string{pbkH.GetAlgorithm(), fmt.Sprintf("%d", rounds), salt, hashed}, "$")
+	hashed := EncodeBase64String(Pbkdf2([]byte(cleartext), []byte(salt), rounds, pbkH.digest))
+	return strings.Join([]string{pbkH.Algorithm(), fmt.Sprintf("%d", rounds), salt, hashed}, "$")
 }
 
 func (pbkH *PBKDF2_Base) Verify(cleartext, encoded string) bool {
@@ -102,7 +103,7 @@ func (pbkH *PBKDF2_Base) Verify(cleartext, encoded string) bool {
 
 	// The algorithm should match this hasher
 	algo := splitHash[0]
-	if algo != pbkH.Algorithm {
+	if algo != pbkH.Algorithm() {
 		return false
 	}
 	rounds64, err := strconv.ParseInt(splitHash[1], 10, 0)
@@ -113,14 +114,18 @@ func (pbkH *PBKDF2_Base) Verify(cleartext, encoded string) bool {
 	salt := splitHash[2]
 
 	// Generate a new hash using the given cleartext
-	hashed := Pbkdf2([]byte(cleartext), []byte(salt), rounds, pbkH.Digest)
+	hashed := Pbkdf2([]byte(cleartext), []byte(salt), rounds, pbkH.digest)
 	return ConstantTimeStringCompare(EncodeBase64String(hashed), splitHash[3])
 }
 
-func init() {
-	pbkdf2_sha256 := &PBKDF2_Base{BaseHasher{Algorithm: "pbkdf2_sha256", Rounds: 10000}, sha256.New}
-	Register(pbkdf2_sha256.Algorithm, pbkdf2_sha256)
+func NewPBKDF2Hasher(algorithm string, rounds int64, digest func() hash.Hash) *PBKDF2_Base {
+	return &PBKDF2_Base{NewBaseHasher(algorithm), rounds, digest}
+}
 
-	pbkdf2_sha1 := &PBKDF2_Base{BaseHasher{Algorithm: "pbkdf2_sha1", Rounds: 10000}, sha1.New}
-	Register(pbkdf2_sha1.Algorithm, pbkdf2_sha1)
+func init() {
+	pbkdf2_sha256 := NewPBKDF2Hasher("pbkdf2_sha256", 10000, sha256.New)
+	Register(pbkdf2_sha256.algorithm, pbkdf2_sha256)
+
+	pbkdf2_sha1 := NewPBKDF2Hasher("pbkdf2_sha1", 10000, sha1.New)
+	Register(pbkdf2_sha1.algorithm, pbkdf2_sha1)
 }

@@ -8,7 +8,7 @@ type Hasher interface {
 	Encode(string, string) string
 	Salt() string
 	Verify(string, string) bool
-	GetAlgorithm() string
+	Algorithm() string
 }
 
 func MakePassword(h Hasher, cleartext string) string {
@@ -41,8 +41,7 @@ func Get(name string) (Hasher, error) {
 
 // The BaseHasher struct is the parent of all included Hashers
 type BaseHasher struct {
-	Algorithm string
-	Rounds    int
+	algorithm string
 }
 
 func (bH *BaseHasher) Salt() string {
@@ -50,6 +49,10 @@ func (bH *BaseHasher) Salt() string {
 	return EncodeBase64String(RandomBytes(9))
 }
 
-func (bH *BaseHasher) GetAlgorithm() string {
-	return bH.Algorithm
+func (bH *BaseHasher) Algorithm() string {
+	return bH.algorithm
+}
+
+func NewBaseHasher(algorithm string) BaseHasher {
+	return BaseHasher{algorithm: algorithm}
 }
