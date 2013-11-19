@@ -9,7 +9,7 @@ type User interface {
 }
 
 type BaseUser struct {
-	Id int
+	Id       int
 	Username string
-	Email string
+	Email    string
 }
