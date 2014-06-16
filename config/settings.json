@@ -1,0 +1,20 @@
+{
+    "domain": "localhost",
+    "port": 9001,
+    "smtp": {
+        "port": 587,
+        "user": "user",
+        "password": "password",
+        "host": "example.com",
+        "from": "no_reply@example.com",
+        "alias": "Example User"
+    },
+    "database": {
+        "driver": "postgres",
+        "host": "localhost",
+        "port": 5432,
+        "name": "db",
+        "user": "pg",
+        "password": "pass" 
+    }
+}
