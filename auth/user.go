@@ -1,4 +1,4 @@
-package users
+package auth
 
 type User interface {
 	Id() int64

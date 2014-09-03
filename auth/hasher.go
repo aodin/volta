@@ -1,4 +1,4 @@
-package users
+package auth
 
 import (
 	"fmt"
@@ -23,10 +23,10 @@ var hashers = make(map[string]Hasher)
 
 func Register(name string, hasher Hasher) {
 	if hasher == nil {
-		panic("hashing: Attempting to register a nil Hasher")
+		panic("auth: attempting to register a nil Hasher")
 	}
 	if _, duplicate := hashers[name]; duplicate {
-		panic("hashing: Register called twice for Hasher " + name)
+		panic("auth: register called twice for Hasher " + name)
 	}
 	hashers[name] = hasher
 }
@@ -34,7 +34,7 @@ func Register(name string, hasher Hasher) {
 func Get(name string) (Hasher, error) {
 	hasher, ok := hashers[name]
 	if !ok {
-		return nil, fmt.Errorf("hashing: unknown hasher %s (did you remember to import it?)", name)
+		return nil, fmt.Errorf("auth: unknown hasher %s (did you remember to import it?)", name)
 	}
 	return hasher, nil
 }
