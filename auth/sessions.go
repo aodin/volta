@@ -1,39 +1,30 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"time"
 )
 
-// TODO should also provide the interface for sessions
+// Session is an interface for sessions.
+// TODO Session data as JSON or map[string]interface{}?
 type Session interface {
-	Create()
-	Delete(string)
-	Exists(string) bool
-	Load()
-	Save()
+	Key() string
+	Expires() time.Time
+	User() (User, error)
+	Delete() error
 }
 
-type SessionBase struct {
-	sessionExpiration time.Time
+// RandomKey generates a new 144 bit session key. It does so by producing 18
+// random bytes that are encoded in URL safe base64, for output of 24 chars.
+func RandomKey() (string, error) {
+	b := make([]byte, 18)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-func (s *SessionBase) encode() string {
-	// TODO accept any valid json?
-	// TODO Should return a base64 encoded string
-	return ""
-}
-
-func (s *SessionBase) decode(sessionInfo string) {
-	// TODO return what? the json, the decoded session info in a struct?
-}
-
-func (s *SessionBase) getNewSessionKey() string {
-	// TODO needs to check existance
-	return GetRandomString(24, "abcdefghijklmnopqrstuvwxyz0123456789")
-}
-
-// TODO allow nil as a zero value?
-func (s *SessionBase) setExpiration(d time.Duration) {
-	s.sessionExpiration = time.Now().Add(d)
-}
-
+// KeyFunc is the function type that will be used to generate new session keys.
+type KeyFunc func() (string, error)
