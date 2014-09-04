@@ -12,7 +12,7 @@ import (
 type SessionManager interface {
 	Create(user User) (Session, error)
 	Get(key string) (Session, error)
-	Delete(session Session) error
+	Delete(key string) error
 }
 
 // Session is an interface for sessions.
@@ -92,13 +92,13 @@ func (m *MemorySessions) Get(key string) (Session, error) {
 }
 
 // Delete deletes the session with the given key.
-func (m *MemorySessions) Delete(session Session) error {
+func (m *MemorySessions) Delete(key string) error {
 	// Lock the mutex for writing
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
 	// Delete the session at the given key
-	delete(m.byKey, session.Key())
+	delete(m.byKey, key)
 	return nil
 }
 
@@ -138,5 +138,5 @@ func (s *session) User() (User, error) {
 }
 
 func (s *session) Delete() error {
-	return s.manager.Delete(s)
+	return s.manager.Delete(s.key)
 }

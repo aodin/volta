@@ -54,3 +54,11 @@ func parse(f io.Reader) (Config, error) {
 	}
 	return c, nil
 }
+
+func DefaultConfig(key string) Config {
+	return Config{
+		Cookie:    DefaultCookie,
+		Port:      8080,
+		SecretKey: key,
+	}
+}
