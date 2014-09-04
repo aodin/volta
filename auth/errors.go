@@ -1,9 +1,9 @@
 package auth
 
 import (
-    "errors"
+	"errors"
 )
 
 var (
-    ErrNotImplemented = errors.New("auth: this feature is not implemented")
+	ErrNotImplemented = errors.New("auth: this feature is not implemented")
 )

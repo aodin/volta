@@ -86,15 +86,28 @@ func Pbkdf2(cleartext, salt []byte, rounds int, h func() hash.Hash) []byte {
 // TODO declare private?
 type PBKDF2_Base struct {
 	BaseHasher
-	rounds int64
+	rounds int
 	digest func() hash.Hash // TODO move to base hasher?
 }
 
 func (pbkH *PBKDF2_Base) Encode(cleartext, salt string) string {
 	// TODO these []byte conversions are a bit silly
-	rounds := 10000
-	hashed := EncodeBase64String(Pbkdf2([]byte(cleartext), []byte(salt), rounds, pbkH.digest))
-	return strings.Join([]string{pbkH.Algorithm(), fmt.Sprintf("%d", rounds), salt, hashed}, "$")
+	hashed := EncodeBase64String(
+		Pbkdf2(
+			[]byte(cleartext),
+			[]byte(salt),
+			pbkH.rounds,
+			pbkH.digest,
+		),
+	)
+	return strings.Join(
+		[]string{
+			pbkH.Algorithm(),
+			fmt.Sprintf("%d", pbkH.rounds),
+			salt,
+			hashed,
+		},
+		"$")
 }
 
 func (pbkH *PBKDF2_Base) Verify(cleartext, encoded string) bool {
@@ -118,7 +131,7 @@ func (pbkH *PBKDF2_Base) Verify(cleartext, encoded string) bool {
 	return ConstantTimeStringCompare(EncodeBase64String(hashed), splitHash[3])
 }
 
-func NewPBKDF2Hasher(algorithm string, rounds int64, digest func() hash.Hash) *PBKDF2_Base {
+func NewPBKDF2Hasher(algorithm string, rounds int, digest func() hash.Hash) *PBKDF2_Base {
 	return &PBKDF2_Base{NewBaseHasher(algorithm), rounds, digest}
 }
 
