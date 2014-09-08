@@ -26,4 +26,13 @@ func TestFields(t *testing.T) {
 	assert.Equal(1, user.ID)
 	assert.Equal("admin", user.Name)
 	assert.Equal(true, user.IsAdmin)
+
+	// Test incomplete field population
+	f2 := Fields{
+		"is_admin": true,
+	}
+	var unknown testUser
+	err = f2.Unmarshal(&unknown)
+	assert.Nil(err)
+	assert.Equal(true, user.IsAdmin)
 }

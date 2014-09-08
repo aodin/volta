@@ -34,39 +34,29 @@ func (f Fields) Unmarshal(i interface{}) error {
 	return f.setValues(&elem, layout)
 }
 
-func (f Fields) setValues(elem *reflect.Value, layout map[int]string) error {
-	// TODO wrap the errors with the current field
-	fmt.Println("Number of fields:", elem.NumField())
-	for i := 0; i < elem.NumField(); i += 1 {
+func (f Fields) setValues(elem *reflect.Value, layout map[string]int) error {
+	// Iterate through Fields
+	for key, value := range f {
+		// Get the index of the struct for this key
+		i, ok := layout[key]
+		if !ok {
+			return fmt.Errorf("auth: no destination for field %s", key)
+		}
 		field := elem.Field(i)
 		if !field.IsValid() || !field.CanSet() {
 			return fmt.Errorf("auth: field %d cannot be set", i)
 		}
 
-		// Use the field name or tag alias
-		var value interface{}
-
-		alias, ok := layout[i]
-		if !ok {
-			return fmt.Errorf("auth: no field name for field %d", i)
-		}
-
-		// Get the associated field value
-		value, exists := f[alias]
-		if !exists {
-			return fmt.Errorf("auth: no field with alias or name %s", alias)
-		}
-		fmt.Println("Value:", value)
-
-		// TODO What about using a type switch instead? benchmark it.
+		// Cast the interface to the Kind of the destination field
 		switch field.Kind() {
 		case reflect.String:
 			v, ok := value.(string)
 			if !ok {
-				return fmt.Errorf("auth: field %s is not a string", alias)
+				return fmt.Errorf("auth: field %s is not a string", key)
 			}
 			field.SetString(v)
 		case reflect.Int64:
+			// TODO is there a better way to cast both integer types?
 			v, ok := value.(int64)
 			if !ok {
 				var v2 int
@@ -74,7 +64,7 @@ func (f Fields) setValues(elem *reflect.Value, layout map[int]string) error {
 				if !ok {
 					return fmt.Errorf(
 						"auth: field %s is not an integer",
-						alias,
+						key,
 					)
 				}
 				v = int64(v2)
@@ -83,13 +73,13 @@ func (f Fields) setValues(elem *reflect.Value, layout map[int]string) error {
 		case reflect.Float64:
 			v, ok := value.(float64)
 			if !ok {
-				return fmt.Errorf("auth: field %s is not a float64", alias)
+				return fmt.Errorf("auth: field %s is not a float64", key)
 			}
 			field.SetFloat(v)
 		case reflect.Bool:
 			v, ok := value.(bool)
 			if !ok {
-				return fmt.Errorf("auth: field %s is not a bool", alias)
+				return fmt.Errorf("auth: field %s is not a bool", key)
 			}
 			field.SetBool(v)
 		case reflect.Struct:
@@ -99,7 +89,7 @@ func (f Fields) setValues(elem *reflect.Value, layout map[int]string) error {
 				if !ok {
 					return fmt.Errorf(
 						"auth: field %s is not a time.Time",
-						alias,
+						key,
 					)
 				}
 				field.Set(reflect.ValueOf(v))
@@ -120,15 +110,15 @@ func (f Fields) setValues(elem *reflect.Value, layout map[int]string) error {
 	return nil
 }
 
-func setLayout(v reflect.Type) map[int]string {
-	layout := make(map[int]string)
+func setLayout(v reflect.Type) map[string]int {
+	layout := make(map[string]int)
 	for i := 0; i < v.NumField(); i += 1 {
 		f := v.Field(i)
 		tag := f.Tag.Get("db")
 		if tag == "" {
-			layout[i] = f.Name
+			layout[f.Name] = i
 		} else {
-			layout[i] = tag
+			layout[tag] = i
 		}
 	}
 	return layout
