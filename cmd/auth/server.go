@@ -84,32 +84,8 @@ func (srv *Server) Login(w http.ResponseWriter, r *http.Request, p httprouter.Pa
 	user := r.FormValue("username")
 	pass := r.FormValue("password")
 
-	// Use an authentication block
-	if func(username, password string) (ok bool) {
-		// Get the user
-		user, err := srv.users.Get(auth.Fields{"Name": username})
-		// TODO What if it is a db error?
-		if err != nil {
-			return
-		}
-
-		// Test the user's password
-		if !auth.CheckPassword(srv.hasher, password, user.Password()) {
-			return
-		}
-
-		// Create a new session
-		session, err := srv.sessions.Create(user)
-		if err != nil {
-			// TODO panic
-			return
-		}
-		auth.SetCookie(w, srv.config.Cookie, session)
-		ok = true
-		return
-	}(user, pass) {
-		// Redirect
-		http.Redirect(w, r, "/", 302)
+	// Error is ignored because all 500 errors will be logged anyway
+	if returnNow, _ := auth.Login(w, r, user, pass, srv.sessions, srv.users, srv.hasher, srv.config.Cookie, "/"); returnNow {
 		return
 	}
 
@@ -162,7 +138,7 @@ func New(c config.Config) (*Server, error) {
 	}
 
 	// Create a new sessions manager
-	srv.sessions = auth.SessionsInMemory(c.Cookie, srv.users)
+	srv.sessions = auth.SessionsInMemory(c.Cookie)
 
 	// Create the routes
 	srv.router = httprouter.New()
