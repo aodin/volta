@@ -18,6 +18,7 @@ func TestUserManager(t *testing.T) {
 	// Create a new user
 	admin, err := manager.Create("admin", "admin")
 	assert.Nil(err)
+	assert.Equal(admin.ID(), 1)
 	assert.Equal(admin.Name(), "admin")
 
 	// Verify the password

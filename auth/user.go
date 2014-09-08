@@ -65,7 +65,7 @@ func (m *MemoryUsers) Get(f Fields) (User, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
-	rawID, ok := f["ID"]
+	rawID, ok := f["id"]
 	if ok {
 		id, isInt64 := rawID.(int64)
 		if !isInt64 {
@@ -74,11 +74,11 @@ func (m *MemoryUsers) Get(f Fields) (User, error) {
 		// Get the user at the given id
 		user, exists := m.byID[id]
 		if !exists {
-			return user, fmt.Errorf("auth: no user with id %d exists", id)
+			return user, NewUserError("no user with id %d exists", id)
 		}
 		return user, nil
 	}
-	rawName, ok := f["Name"]
+	rawName, ok := f["name"]
 	if ok {
 		name, isString := rawName.(string)
 		if !isString {
@@ -87,7 +87,7 @@ func (m *MemoryUsers) Get(f Fields) (User, error) {
 		// Get the user at the given name
 		user, exists := m.byName[name]
 		if !exists {
-			return user, fmt.Errorf("auth: no user with name %s exists", name)
+			return user, NewUserError("no user with name %s exists", name)
 		}
 		return user, nil
 	}
@@ -102,7 +102,7 @@ func (m *MemoryUsers) Delete(id int64) (User, error) {
 	// Confirm the user exists
 	user, exists := m.byID[id]
 	if !exists {
-		return nil, fmt.Errorf("auth: no user found with id %d", id)
+		return nil, NewUserError("auth: no user found with id %d", id)
 	}
 	// Remove the user from both the id and name maps
 	delete(m.byID, id)
@@ -143,7 +143,12 @@ func (u *user) Password() string {
 }
 
 func (u *user) Fields() Fields {
-	return Fields{"Email": u.email, "IsAdmin": u.isAdmin}
+	return Fields{
+		"id":       u.id,
+		"email":    u.email,
+		"password": u.password,
+		"is_admin": u.isAdmin,
+	}
 }
 
 // Delete removes the user from its user manager.

@@ -19,7 +19,7 @@ type SessionManager interface {
 type Session interface {
 	Key() string
 	Expires() time.Time
-	User() (User, error)
+	User() int64
 	Delete() error
 	// TODO Session data as JSON or map[string]interface{}?
 }
@@ -42,7 +42,6 @@ type KeyFunc func() (string, error)
 type MemorySessions struct {
 	mutex   sync.RWMutex
 	byKey   map[string]*session
-	users   UserManager
 	cookie  config.CookieConfig
 	keyFunc KeyFunc
 	nowFunc func() time.Time
@@ -78,16 +77,18 @@ func (m *MemorySessions) Create(user User) (Session, error) {
 }
 
 // Get returns the session with the given key
+// Errors should only be returned on server error conditions (such as failed
+// database connections). If no session is found, a zero-initialized session
+// should be returned instead of an error.
 func (m *MemorySessions) Get(key string) (Session, error) {
 	// Lock the mutex for reading
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
 	// Get the session at the given key
-	session, exists := m.byKey[key]
-	if !exists {
-		return session, fmt.Errorf("auth: no session with key %s exists", key)
-	}
+	// If no session exists with the given key, a zero initialized session
+	// will be returned with a empty string as key
+	session, _ := m.byKey[key]
 	return session, nil
 }
 
@@ -104,11 +105,9 @@ func (m *MemorySessions) Delete(key string) error {
 
 // SessionsInMemory creates a new MemorySessions with default implementations
 // of keyFunc and nowFunc.
-func SessionsInMemory(c config.CookieConfig, u UserManager) *MemorySessions {
-	// Use default functions
+func SessionsInMemory(c config.CookieConfig) *MemorySessions {
 	return &MemorySessions{
 		byKey:   make(map[string]*session),
-		users:   u,
 		cookie:  c,
 		keyFunc: RandomKey,
 		nowFunc: time.Now,
@@ -132,9 +131,9 @@ func (s *session) Expires() time.Time {
 	return s.expires
 }
 
-// Users returns the User with the session's user id.
-func (s *session) User() (User, error) {
-	return s.manager.users.Get(Fields{"ID": s.userID})
+// User returns UserID of the session.
+func (s *session) User() int64 {
+	return s.userID
 }
 
 func (s *session) Delete() error {

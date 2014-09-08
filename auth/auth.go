@@ -1,8 +1,15 @@
 package auth
 
 import (
+	"github.com/aodin/volta/config"
+	"net/http"
 	"time"
 )
+
+// TODO distinguish between errors and nil responses
+func Login(w http.ResponseWriter, username, password string, sessions SessionManager, users UserManager, c config.CookieConfig, loginURL string) bool {
+	return false
+}
 
 func GetUserIfValidSession(sessions SessionManager, users UserManager, key string) User {
 	return getUserIfValidSession(sessions, users, key, time.Now)
@@ -16,7 +23,7 @@ func getUserIfValidSession(sessions SessionManager, users UserManager, key strin
 	if !session.Expires().After(nowFunc()) {
 		return nil
 	}
-	user, err := session.User()
+	user, err := users.Get(Fields{"id": session.User()})
 	if err != nil {
 		return nil
 	}

@@ -22,17 +22,18 @@ func TestSessionManager(t *testing.T) {
 	assert.Equal(admin.Name(), "admin")
 
 	// Create a new sessions manager
-	sessions := SessionsInMemory(config.DefaultCookie, users)
+	sessions := SessionsInMemory(config.DefaultCookie)
 
 	session, err := sessions.Create(admin)
 	assert.Nil(err)
 
 	// Get the user back out of the session
-	admin2, err := session.User()
+	id := session.User()
+	authAdmin, err := users.Get(Fields{"id": id})
 	assert.Nil(err)
 
-	assert.Equal(admin.Name(), admin2.Name())
-	assert.Equal(admin.Password(), admin2.Password())
+	assert.Equal(admin.Name(), authAdmin.Name())
+	assert.Equal(admin.Password(), authAdmin.Password())
 
 	// TODO test the handling of duplicate session keys
 }
