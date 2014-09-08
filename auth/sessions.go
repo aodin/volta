@@ -3,7 +3,6 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 	"github.com/aodin/volta/config"
 	"sync"
 	"time"
@@ -66,7 +65,7 @@ func (m *MemorySessions) Create(user User) (Session, error) {
 	for {
 		s.key, err = m.keyFunc()
 		if err != nil {
-			return s, fmt.Errorf("auth: key generation error: %s", err)
+			return s, NewServerError("auth: key generation error: %s", err)
 		}
 		if _, exists := m.byKey[s.key]; !exists {
 			break
@@ -86,9 +85,10 @@ func (m *MemorySessions) Get(key string) (Session, error) {
 	defer m.mutex.RUnlock()
 
 	// Get the session at the given key
-	// If no session exists with the given key, a zero initialized session
-	// will be returned with a empty string as key
-	session, _ := m.byKey[key]
+	session, ok := m.byKey[key]
+	if !ok {
+		return session, NewUserError("auth: no session key %s exists", key)
+	}
 	return session, nil
 }
 

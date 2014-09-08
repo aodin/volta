@@ -69,7 +69,7 @@ func (m *MemoryUsers) Get(f Fields) (User, error) {
 	if ok {
 		id, isInt64 := rawID.(int64)
 		if !isInt64 {
-			return nil, fmt.Errorf("auth: could not parse %v as an id", rawID)
+			return nil, NewServerError("auth: could not parse %v as an id", rawID)
 		}
 		// Get the user at the given id
 		user, exists := m.byID[id]
@@ -82,7 +82,7 @@ func (m *MemoryUsers) Get(f Fields) (User, error) {
 	if ok {
 		name, isString := rawName.(string)
 		if !isString {
-			return nil, fmt.Errorf("auth: could not parse %v as a name", rawName)
+			return nil, NewServerError("auth: could not parse %v as a name", rawName)
 		}
 		// Get the user at the given name
 		user, exists := m.byName[name]
@@ -91,7 +91,7 @@ func (m *MemoryUsers) Get(f Fields) (User, error) {
 		}
 		return user, nil
 	}
-	return nil, fmt.Errorf("auth: insufficient fields provided to find a user")
+	return nil, NewServerError("auth: insufficient fields provided to find a user")
 }
 
 func (m *MemoryUsers) Delete(id int64) (User, error) {

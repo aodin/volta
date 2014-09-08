@@ -55,3 +55,15 @@ func HandleErrorHTTP(w http.ResponseWriter, r *http.Request, err error) bool {
 	}
 	return false
 }
+
+func IgnoreUserErrors(w http.ResponseWriter, r *http.Request, err error) bool {
+	switch err.(type) {
+	case ServerError:
+		// Log and return a 500
+		// TODO Ignore the code for now
+		http.Error(w, err.Error(), 500)
+		log.Println(err.Error())
+		return true
+	}
+	return false
+}
