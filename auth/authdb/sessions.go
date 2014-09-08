@@ -16,7 +16,7 @@ type SessionManager struct {
 }
 
 // Create creates a new session using a key generated for the given User
-func (m *SessionManager) Create(user User) (auth.Session, error) {
+func (m *SessionManager) Create(user auth.User) (auth.Session, error) {
 	s := &Session{
 		UserField: user.ID(),
 	}
@@ -32,8 +32,12 @@ func (m *SessionManager) Create(user User) (auth.Session, error) {
 			return s, auth.NewServerError("authdb: key generation error: %s", err)
 		}
 		// TODO distinguish between no response and an improper query
-		session, _ := m.Get(s.KeyField)
-		if session == nil {
+		var sessions []Session
+		stmt := Sessions.Select().Where(Sessions.C["key"].Equals(s.KeyField)).Limit(2)
+		if err = m.db.QueryAll(stmt, &sessions); err != nil {
+			return s, auth.NewServerError("authdb: error checking if key exists: %s", err)
+		}
+		if len(sessions) == 0 {
 			break
 		}
 	}
@@ -71,6 +75,15 @@ func (m *SessionManager) Delete(key string) error {
 		)
 	}
 	return err
+}
+
+func NewSessionManager(db *aspect.DB, c config.CookieConfig) *SessionManager {
+	return &SessionManager{
+		db:      db,
+		cookie:  c,
+		keyFunc: auth.RandomKey,
+		nowFunc: time.Now,
+	}
 }
 
 // Session is a database-backed session that implements the volta auth.Session

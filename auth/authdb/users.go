@@ -75,7 +75,7 @@ func (m *UserManager) Get(fields auth.Fields) (auth.User, error) {
 		}
 		// Get the user at the given name
 		var user User
-		stmt := Users.Select().Where(Users.C["name"].Equals(name))
+		stmt := Users.Select().Where(Users.C["email"].Equals(name))
 		if err := m.db.QueryOne(stmt, &user); err != nil {
 			// TODO distinguish between no response and an improper query
 			return &user, auth.NewUserError("no user with name %s exists", name)
@@ -96,6 +96,13 @@ func (m *UserManager) Delete(id int64) (auth.User, error) {
 		)
 	}
 	return nil, nil
+}
+
+func NewUserManager(db *aspect.DB, h auth.Hasher) *UserManager {
+	return &UserManager{
+		db: db,
+		h:  h,
+	}
 }
 
 // User is a database-backed user that implements the volta auth.User
@@ -136,7 +143,7 @@ func (u *User) Delete() (err error) {
 }
 
 var Users = aspect.Table("users",
-	aspect.Column("id", aspect.Integer{}),
+	aspect.Column("id", postgres.Serial{}),
 	aspect.Column("email", aspect.String{}),
 	aspect.Column("password", aspect.String{}),
 	aspect.Column("is_admin", aspect.Boolean{}),
