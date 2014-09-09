@@ -137,8 +137,8 @@ func NewPBKDF2Hasher(algorithm string, rounds int, digest func() hash.Hash) *PBK
 
 func init() {
 	pbkdf2_sha256 := NewPBKDF2Hasher("pbkdf2_sha256", 10000, sha256.New)
-	Register(pbkdf2_sha256.algorithm, pbkdf2_sha256)
+	RegisterHasher(pbkdf2_sha256.algorithm, pbkdf2_sha256)
 
 	pbkdf2_sha1 := NewPBKDF2Hasher("pbkdf2_sha1", 10000, sha1.New)
-	Register(pbkdf2_sha1.algorithm, pbkdf2_sha1)
+	RegisterHasher(pbkdf2_sha1.algorithm, pbkdf2_sha1)
 }

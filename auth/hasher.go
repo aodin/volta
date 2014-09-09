@@ -21,7 +21,7 @@ func CheckPassword(h Hasher, cleartext, encoded string) bool {
 
 var hashers = make(map[string]Hasher)
 
-func Register(name string, hasher Hasher) {
+func RegisterHasher(name string, hasher Hasher) {
 	if hasher == nil {
 		panic("auth: attempting to register a nil Hasher")
 	}
@@ -31,7 +31,7 @@ func Register(name string, hasher Hasher) {
 	hashers[name] = hasher
 }
 
-func Get(name string) (Hasher, error) {
+func GetHasher(name string) (Hasher, error) {
 	hasher, ok := hashers[name]
 	if !ok {
 		return nil, fmt.Errorf("auth: unknown hasher %s (did you remember to import it?)", name)

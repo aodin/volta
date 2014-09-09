@@ -6,7 +6,7 @@ import (
 
 func TestRegistry(t *testing.T) {
 	// Get the hasher from the registry
-	pbkdf2_sha256, err := Get("pbkdf2_sha256")
+	pbkdf2_sha256, err := GetHasher("pbkdf2_sha256")
 	if err != nil {
 		// TODO best way to print an error?
 		t.Errorf("Failed to get hasher with err %s", err)
