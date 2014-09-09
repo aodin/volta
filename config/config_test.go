@@ -1,33 +1,38 @@
 package config
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 func TestConfig(t *testing.T) {
+	assert := assert.New(t)
+
 	// Parse the local settings.json file
 	c, err := Parse()
-	if err != nil {
-		t.Fatalf("Error during Parse(): %s", err)
-	}
+	assert.Nil(err)
 
 	// Test the parent config methods
-	if c.Address() != "localhost:9001" {
-		t.Errorf("Unexpected address: %s", c.Address())
-	}
+	assert.Equal("localhost:9001", c.Address())
 
 	// Test the SMTP config methods
-	if c.SMTP.FromAddress() != `"Example User" <no_reply@example.com>` {
-		t.Errorf("Unexpected from address: %s", c.SMTP.FromAddress())
-	}
-
-	if c.SMTP.Address() != "example.com:587" {
-		t.Errorf("Unexpected SMTP address: %s", c.SMTP.Address())
-	}
+	assert.Equal(`"Example User" <no_reply@example.com>`, c.SMTP.FromAddress())
+	assert.Equal("example.com:587", c.SMTP.Address())
 
 	// Test the database config methods
-	x := "host=localhost port=5432 dbname=db user=pg password=pass"
-	if c.Database.Credentials() != x {
-		t.Errorf("Unexpected db credentials: %s", c.Database.Credentials())
-	}
+	assert.Equal(
+		"host=localhost port=5432 dbname=db user=pg password=pass",
+		c.Database.Credentials(),
+	)
+
+	// Test the default cookie settings
+	assert.Equal(336*time.Hour, c.Cookie.Age)
+	assert.Equal("", c.Cookie.Domain)
+	assert.Equal(false, c.Cookie.HttpOnly)
+	assert.Equal("sessionid", c.Cookie.Name)
+	assert.Equal("/", c.Cookie.Path)
+	assert.Equal(false, c.Cookie.Secure)
+
+	// TODO Test custom cookie settings
 }

@@ -42,9 +42,11 @@ func ParseFile(filename string) (Config, error) {
 	return parse(f)
 }
 
-// TODO What about default values? Leave to user?
+// TODO What about default values other than the cookie? Leave to user?
 func parse(f io.Reader) (Config, error) {
-	var c Config
+	c := Config{
+		Cookie: DefaultCookie,
+	}
 	contents, err := ioutil.ReadAll(f)
 	if err != nil {
 		return c, err
