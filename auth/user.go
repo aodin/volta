@@ -36,16 +36,29 @@ func (m *MemoryUsers) Create(name, password string, f ...Fields) (User, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
+	// Create a user from the given fields
+	var u user
+	for _, fields := range f {
+		if err := fields.Unmarshal(&u); err != nil {
+			return &u, err
+		}
+		// TODO unpack the other fields? With overwrites?
+		break
+	}
+
 	// Create a new user and assign an id
 	m.n += 1
-	u := &user{id: m.n, email: name, manager: m}
+
+	u.id = m.n
+	u.email = name
+	u.manager = m
 
 	// The id and name must be unique
 	if _, exists := m.byID[u.id]; exists {
-		return u, fmt.Errorf("auth: user with id %d already exists", u.id)
+		return &u, fmt.Errorf("auth: user with id %d already exists", u.id)
 	}
 	if _, exists := m.byName[u.email]; exists {
-		return u, fmt.Errorf("auth: user with name %s already exists", u.email)
+		return &u, fmt.Errorf("auth: user with name %s already exists", u.email)
 	}
 
 	// TODO Extract the fields the manager cares about
@@ -54,9 +67,9 @@ func (m *MemoryUsers) Create(name, password string, f ...Fields) (User, error) {
 	u.password = MakePassword(m.hasher, password)
 
 	// Save the user to the id and name maps
-	m.byID[u.id] = u
-	m.byName[u.email] = u
-	return u, nil
+	m.byID[u.id] = &u
+	m.byName[u.email] = &u
+	return &u, nil
 }
 
 // Get returns a user either by ID or Name, with preference given to ID
@@ -124,7 +137,7 @@ type user struct {
 	id       int64
 	email    string
 	password string
-	isAdmin  bool
+	IsAdmin  bool `db:"isAdmin"`
 	manager  *MemoryUsers
 }
 
@@ -147,7 +160,7 @@ func (u *user) Fields() Fields {
 		"id":       u.id,
 		"email":    u.email,
 		"password": u.password,
-		"is_admin": u.isAdmin,
+		"is_admin": u.IsAdmin,
 	}
 }
 
