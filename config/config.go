@@ -16,6 +16,7 @@ type Config struct {
 	Port        int            `json:"port"`
 	TemplateDir string         `json:"templates"`
 	StaticDir   string         `json:"static"`
+	StaticURL   string         `json:"static_url"`
 	SecretKey   string         `json:"secret_key"`
 	Database    DatabaseConfig `json:"database"`
 	Cookie      CookieConfig   `json:"cookie"`
@@ -62,5 +63,6 @@ func DefaultConfig(key string) Config {
 		Cookie:    DefaultCookie,
 		Port:      8080,
 		SecretKey: key,
+		StaticURL: "/static/",
 	}
 }
