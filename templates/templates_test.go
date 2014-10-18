@@ -29,11 +29,8 @@ func newTestWriter() *testWriter {
 var _ http.ResponseWriter = newTestWriter()
 
 func TestTemplates(t *testing.T) {
-	// Parse the test_fixtures directory
-	parsed := New("./test_fixtures/pass")
-
-	// Add a local variable to the Templates instance
-	parsed.SetAttr("Greeting", "Yo")
+	// Parse the test_fixtures directory with a local variable
+	parsed := New("./test_fixtures/pass", Attrs{"Greeting": "Yo"})
 
 	// Overwrite a local variable
 	if err := parsed.SetAttr("Greeting", "Hello"); err == nil {

@@ -40,10 +40,14 @@ func (t *Templates) Execute(w http.ResponseWriter, n string, attrs ...Attrs) {
 
 // New creates a new Templates instance by compiling all files recursively in
 // the given directory. Panics on error.
-func New(p string) *Templates {
+func New(p string, attrs ...Attrs) *Templates {
+	data := Attrs{}
+	for _, attr := range attrs {
+		data.Merge(attr)
+	}
 	t := &Templates{
 		parsed: template.New("template"),
-		locals: Attrs{},
+		locals: data,
 	}
 
 	// Recursively walk the given directory and build templates, returning
