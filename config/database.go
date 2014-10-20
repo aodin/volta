@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 )
 
 // DatabaseConfig contains the fields needed to connect to a database.
@@ -12,19 +13,31 @@ type DatabaseConfig struct {
 	Name     string `json:"name"`
 	User     string `json:"user"`
 	Password string `json:"password"`
+	SSLMode  string `json:"ssl_mode"`
 }
 
 // Credentials with return a string of credentials appropriate for Go's
 // sql.Open function
 func (db DatabaseConfig) Credentials() string {
-	// TODO Are there different credentials for different drivers?
-	// TODO Only add the key=value pair if there is a value
-	return fmt.Sprintf(
-		"host=%s port=%d dbname=%s user=%s password=%s",
-		db.Host,
-		db.Port,
-		db.Name,
-		db.User,
-		db.Password,
-	)
+	// Only add the key if there is a value
+	var values []string
+	if db.Host != "" {
+		values = append(values, fmt.Sprintf("host=%s", db.Host))
+	}
+	if db.Port != 0 {
+		values = append(values, fmt.Sprintf("port=%d", db.Port))
+	}
+	if db.Name != "" {
+		values = append(values, fmt.Sprintf("dbname=%s", db.Name))
+	}
+	if db.User != "" {
+		values = append(values, fmt.Sprintf("user=%s", db.User))
+	}
+	if db.Password != "" {
+		values = append(values, fmt.Sprintf("password=%s", db.Password))
+	}
+	if db.SSLMode != "" {
+		values = append(values, fmt.Sprintf("sslmode=%s", db.SSLMode))
+	}
+	return strings.Join(values, " ")
 }

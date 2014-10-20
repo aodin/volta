@@ -20,7 +20,7 @@ func TestConfig(t *testing.T) {
 	assert.Equal(`"Example User" <no_reply@example.com>`, c.SMTP.FromAddress())
 	assert.Equal("example.com:587", c.SMTP.Address())
 
-	// Test the database config methods
+	// Test the database config methods when values are missing
 	assert.Equal(
 		"host=localhost port=5432 dbname=db user=pg password=pass",
 		c.Database.Credentials(),
