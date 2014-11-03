@@ -40,7 +40,17 @@ func (t *Templates) Execute(w http.ResponseWriter, n string, attrs ...Attrs) {
 
 // New creates a new Templates instance by compiling all files recursively in
 // the given directory. Panics on error.
-func New(p string, attrs ...Attrs) *Templates {
+func New(path string, attrs ...Attrs) *Templates {
+	return new(path, "", "", attrs...)
+}
+
+// New creates a new Templates instance by compiling all files recursively in
+// the given directory using the given delimiters. Panics on error.
+func NewWithDelims(path, openTag, closeTag string, attrs ...Attrs) *Templates {
+	return new(path, openTag, closeTag, attrs...)
+}
+
+func new(path, openTag, closeTag string, attrs ...Attrs) *Templates {
 	data := Attrs{}
 	for _, attr := range attrs {
 		data.Merge(attr)
@@ -50,14 +60,19 @@ func New(p string, attrs ...Attrs) *Templates {
 		locals: data,
 	}
 
+	// Set alternative delims if both open and close tags are set
+	if openTag != "" && closeTag != "" {
+		t.parsed = t.parsed.Delims(openTag, closeTag)
+	}
+
 	// Recursively walk the given directory and build templates, returning
 	// immediately on error.
-	err := filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(path, func(name string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if strings.HasSuffix(strings.ToLower(path), ".html") {
-			if _, err := t.parsed.ParseFiles(path); err != nil {
+		if strings.HasSuffix(strings.ToLower(name), ".html") {
+			if _, err := t.parsed.ParseFiles(name); err != nil {
 				return err
 			}
 		}

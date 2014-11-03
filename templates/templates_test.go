@@ -51,6 +51,20 @@ Child says Hello`
 		t.Errorf("unexpected template execution output: %s", w.String())
 	}
 
+	// Test alternate delims
+	parsed = NewWithDelims(
+		"./test_fixtures/delims",
+		`<%`,
+		`%>`,
+		Attrs{"Greeting": "Yo"},
+	)
+	w = newTestWriter()
+	parsed.Execute(w, "delims")
+	expected = `The template says Yo`
+	if w.String() != expected {
+		t.Errorf("unexpected delim template execution output: %s", w.String())
+	}
+
 	// Call a template that doesn't exist
 	// Execute the test in an anon block (in case we want more defers)
 	func() {
