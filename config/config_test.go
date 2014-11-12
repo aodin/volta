@@ -15,6 +15,11 @@ func TestConfig(t *testing.T) {
 
 	// Test the parent config methods
 	assert.Equal("localhost:9001", c.Address())
+	assert.Equal("http://localhost:9001", c.FullAddress())
+
+	c.Port = 80
+	c.HTTPS = true
+	assert.Equal("https://localhost", c.FullAddress())
 
 	// Test the SMTP config methods
 	assert.Equal(`"Example User" <no_reply@example.com>`, c.SMTP.FromAddress())

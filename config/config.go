@@ -28,6 +28,17 @@ func (c Config) Address() string {
 	return fmt.Sprintf("%s:%d", c.Domain, c.Port)
 }
 
+func (c Config) FullAddress() string {
+	protocol := "http"
+	if c.HTTPS {
+		protocol = "https"
+	}
+	if c.Port == 80 {
+		return fmt.Sprintf("%s://%s", protocol, c.Domain)
+	}
+	return fmt.Sprintf("%s://%s:%d", protocol, c.Domain, c.Port)
+}
+
 // Parse will create a Config using the file settings.json in the
 // current directory.
 func Parse() (Config, error) {
