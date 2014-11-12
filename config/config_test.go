@@ -17,12 +17,13 @@ func TestConfig(t *testing.T) {
 	assert.Equal("localhost:9001", c.Address())
 	assert.Equal("http://localhost:9001", c.FullAddress())
 
+	c.ProxyDomain = "example.com"
 	c.ProxyPort = 3000
-	assert.Equal("http://localhost:3000", c.FullAddress())
+	assert.Equal("http://example.com:3000", c.FullAddress())
 
 	c.ProxyPort = 80
 	c.HTTPS = true
-	assert.Equal("https://localhost", c.FullAddress())
+	assert.Equal("https://example.com", c.FullAddress())
 
 	// Test the SMTP config methods
 	assert.Equal(`"Example User" <no_reply@example.com>`, c.SMTP.FromAddress())
