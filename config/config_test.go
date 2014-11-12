@@ -17,7 +17,10 @@ func TestConfig(t *testing.T) {
 	assert.Equal("localhost:9001", c.Address())
 	assert.Equal("http://localhost:9001", c.FullAddress())
 
-	c.Port = 80
+	c.ProxyPort = 3000
+	assert.Equal("http://localhost:3000", c.FullAddress())
+
+	c.ProxyPort = 80
 	c.HTTPS = true
 	assert.Equal("https://localhost", c.FullAddress())
 

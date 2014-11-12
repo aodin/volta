@@ -14,6 +14,7 @@ type Config struct {
 	HTTPS       bool           `json:"https"`
 	Domain      string         `json:"domain"`
 	Port        int            `json:"port"`
+	ProxyPort   int            `json:"proxy_port"`
 	TemplateDir string         `json:"templates"`
 	StaticDir   string         `json:"static"`
 	StaticURL   string         `json:"static_url"`
@@ -33,10 +34,14 @@ func (c Config) FullAddress() string {
 	if c.HTTPS {
 		protocol = "https"
 	}
-	if c.Port == 80 {
+	proxyPort := c.ProxyPort
+	if proxyPort == 0 {
+		proxyPort = c.Port
+	}
+	if proxyPort == 80 {
 		return fmt.Sprintf("%s://%s", protocol, c.Domain)
 	}
-	return fmt.Sprintf("%s://%s:%d", protocol, c.Domain, c.Port)
+	return fmt.Sprintf("%s://%s:%d", protocol, c.Domain, proxyPort)
 }
 
 // Parse will create a Config using the file settings.json in the
