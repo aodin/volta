@@ -81,6 +81,12 @@ func parse(f io.Reader) (Config, error) {
 	return c, nil
 }
 
+var Default = Config{
+	Cookie:    DefaultCookie,
+	Port:      8080,
+	StaticURL: "/static/",
+}
+
 func DefaultConfig(key string) Config {
 	return Config{
 		Cookie:    DefaultCookie,

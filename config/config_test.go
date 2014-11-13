@@ -9,8 +9,7 @@ import (
 func TestConfig(t *testing.T) {
 	assert := assert.New(t)
 
-	// Parse the local settings.json file
-	c, err := Parse()
+	c, err := ParseFile("./test_fixtures/settings.json")
 	assert.Nil(err)
 
 	// Test the parent config methods
