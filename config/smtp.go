@@ -22,7 +22,7 @@ func (c SMTPConfig) FromAddress() string {
 	return fmt.Sprintf("<%s>", c.From)
 }
 
-// HostWithPort will return a string of the host and port separated by a colon.
+// Address will return a string of the host and port separated by a colon.
 func (c SMTPConfig) Address() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }

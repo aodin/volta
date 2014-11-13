@@ -81,12 +81,16 @@ func parse(f io.Reader) (Config, error) {
 	return c, nil
 }
 
+// Default is a basic configuration with insecure values. It will return the
+// Address localhost:8080
 var Default = Config{
 	Cookie:    DefaultCookie,
 	Port:      8080,
 	StaticURL: "/static/",
 }
 
+// DefaultConfig will return a basic configuration with insecure values. It
+// allows the specification of a secret key.
 func DefaultConfig(key string) Config {
 	return Config{
 		Cookie:    DefaultCookie,

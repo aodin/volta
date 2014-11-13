@@ -10,11 +10,15 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// GooseConfig is a representation of database configurations for the
+// goose migration tool: https://bitbucket.org/liamstask/goose
 type GooseConfig map[string]struct {
 	Driver string
 	Open   string
 }
 
+// ParseGooseDatabase will parse a specific database name in the goose
+// configuration file.
 func ParseGooseDatabase(path, name string) (c DatabaseConfig, err error) {
 	configs, err := parseGooseYAML(path)
 	if err != nil {
@@ -28,7 +32,8 @@ func ParseGooseDatabase(path, name string) (c DatabaseConfig, err error) {
 	return
 }
 
-func parseGooseYAML(path string) (conf map[string]DatabaseConfig, err error) {
+// ParseGooseYAML will parse the entire goose database configuration file.
+func ParseGooseYAML(path string) (conf map[string]DatabaseConfig, err error) {
 	conf = make(map[string]DatabaseConfig)
 
 	// TODO unmarshal directly from the file?
