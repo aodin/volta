@@ -15,11 +15,23 @@ type GooseConfig map[string]struct {
 	Open   string
 }
 
-func ParseTestYAML(path string) (c DatabaseConfig, err error) {
-	return parseGooseYAML(path, "test")
+func ParseGooseDatabase(path, name string) (c DatabaseConfig, err error) {
+	configs, err := parseGooseYAML(path)
+	if err != nil {
+		return
+	}
+	var exists bool
+	if c, exists = configs[name]; !exists {
+		err = fmt.Errorf("config: no database named '%s'", name)
+		return
+	}
+	return
 }
 
-func parseGooseYAML(path, name string) (c DatabaseConfig, err error) {
+func parseGooseYAML(path string) (conf map[string]DatabaseConfig, err error) {
+	conf = make(map[string]DatabaseConfig)
+
+	// TODO unmarshal directly from the file?
 	f, err := os.Open(path)
 	if err != nil {
 		return
@@ -35,35 +47,38 @@ func parseGooseYAML(path, name string) (c DatabaseConfig, err error) {
 		return
 	}
 
-	db, ok := goose[name]
-	if !ok {
-		err = fmt.Errorf("config: no database named '%s'", name)
-		return
-	}
-	c.Driver = db.Driver
-
-	// Split the open string
-	attrs := strings.Split(db.Open, " ")
-
-	// Where's my dynamic programming?
-	m := make(map[string]string)
-	for _, attr := range attrs {
-		parts := strings.SplitN(attr, "=", 2)
-		// Valid attrs will always have 2 parts
-		if len(parts) != 2 {
-			continue
+	// Parse each config
+	for name, db := range goose {
+		c := DatabaseConfig{
+			Driver: db.Driver,
 		}
-		m[parts[0]] = parts[1]
-	}
 
-	// Yup
-	c.Host = m["host"]
-	if c.Port, err = strconv.ParseInt(m["port"], 10, 64); err != nil {
-		return
+		// Split the open string
+		// TODO common operation for doing this
+		attrs := strings.Split(db.Open, " ")
+
+		// Where's my dynamic programming?
+		m := make(map[string]string)
+		for _, attr := range attrs {
+			parts := strings.SplitN(attr, "=", 2)
+			// Valid attrs will always have 2 parts
+			if len(parts) != 2 {
+				// TODO error?
+				continue
+			}
+			m[parts[0]] = parts[1]
+		}
+
+		// Yup
+		c.Host = m["host"]
+		if c.Port, err = strconv.ParseInt(m["port"], 10, 64); err != nil {
+			return
+		}
+		c.Name = m["dbname"]
+		c.User = m["user"]
+		c.Password = m["password"]
+		c.SSLMode = m["sslmode"]
+		conf[name] = c
 	}
-	c.Name = m["dbname"]
-	c.User = m["user"]
-	c.Password = m["password"]
-	c.SSLMode = m["sslmode"]
 	return
 }
