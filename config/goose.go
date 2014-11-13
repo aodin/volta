@@ -20,7 +20,7 @@ type GooseConfig map[string]struct {
 // ParseGooseDatabase will parse a specific database name in the goose
 // configuration file.
 func ParseGooseDatabase(path, name string) (c DatabaseConfig, err error) {
-	configs, err := parseGooseYAML(path)
+	configs, err := ParseGooseYAML(path)
 	if err != nil {
 		return
 	}
