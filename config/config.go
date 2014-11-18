@@ -17,6 +17,8 @@ type Config struct {
 	Port        int            `json:"port"`
 	ProxyPort   int            `json:"proxy_port"`
 	TemplateDir string         `json:"templates"`
+	MediaDir    string         `json:"media"`
+	MediaURL    string         `json:"media_url"`
 	StaticDir   string         `json:"static"`
 	StaticURL   string         `json:"static_url"`
 	SecretKey   string         `json:"secret_key"`
