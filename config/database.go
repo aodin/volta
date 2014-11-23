@@ -1,7 +1,9 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -40,4 +42,14 @@ func (db DatabaseConfig) Credentials() string {
 		values = append(values, fmt.Sprintf("sslmode=%s", db.SSLMode))
 	}
 	return strings.Join(values, " ")
+}
+
+// ParseDatabaseFile will create a DatabaseConfig using the given filepath.
+func ParseDatabaseFile(filepath string) (c DatabaseConfig, err error) {
+	f, err := os.Open(filepath)
+	if err != nil {
+		return
+	}
+	err = json.NewDecoder(f).Decode(&c)
+	return
 }
