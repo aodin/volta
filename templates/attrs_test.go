@@ -1,8 +1,13 @@
 package templates
 
 import (
+	"html/template"
 	"testing"
 )
+
+type testUser struct {
+	Name string `json:"name"`
+}
 
 func TestAttrs(t *testing.T) {
 	// Create a new attrs map
@@ -33,5 +38,20 @@ func TestAttrs(t *testing.T) {
 	}
 	if ID != 1 {
 		t.Fatalf("The ID attr was not 1")
+	}
+
+	attrs := AsJSON("user", testUser{Name: "admin"})
+	j, ok := attrs["user"]
+	if !ok {
+		t.Fatalf("The json attr has no user key")
+	}
+	if string(j.(template.JS)) != `{"name":"admin"}` {
+		t.Fatalf("incorrect json output: %s", j)
+	}
+
+	// The following type cannot be marshaled
+	invalid := AsJSON("user", map[int64]bool{1: true})
+	if _, ok := invalid["user"]; ok {
+		t.Fatalf("an attr was created from invalid JSON")
 	}
 }
