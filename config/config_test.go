@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/url"
 	"testing"
 	"time"
 
@@ -20,10 +21,18 @@ func TestConfig(t *testing.T) {
 	c.ProxyDomain = "example.com"
 	c.ProxyPort = 3000
 	assert.Equal("http://example.com:3000", c.FullAddress())
+	assert.Equal(
+		url.URL{Scheme: "http", Host: "example.com:3000"},
+		c.URL(),
+	)
 
 	c.ProxyPort = 80
 	c.HTTPS = true
 	assert.Equal("https://example.com", c.FullAddress())
+	assert.Equal(
+		url.URL{Scheme: "https", Host: "example.com"},
+		c.URL(),
+	)
 
 	// Test the SMTP config methods
 	assert.Equal(`"Example User" <no_reply@example.com>`, c.SMTP.FromAddress())

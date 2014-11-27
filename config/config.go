@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 )
 
@@ -31,6 +32,30 @@ type Config struct {
 // Address returns the domain:port pair.
 func (c Config) Address() string {
 	return fmt.Sprintf("%s:%d", c.Domain, c.Port)
+}
+
+// ProxyURL returns the domain:port scheme. Port is omitted if 80.
+func (c Config) URL() (u url.URL) {
+	if c.HTTPS {
+		u.Scheme = "https"
+	} else {
+		u.Scheme = "http"
+	}
+	// Fallback to the non proxy domain and ports
+	domain := c.ProxyDomain
+	if domain == "" {
+		domain = c.Domain
+	}
+	port := c.ProxyPort
+	if port == 0 {
+		port = c.Port
+	}
+	if port == 80 {
+		u.Host = domain
+	} else {
+		u.Host = fmt.Sprintf("%s:%d", domain, port)
+	}
+	return
 }
 
 func (c Config) FullAddress() string {
