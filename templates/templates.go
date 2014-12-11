@@ -15,6 +15,14 @@ type Templates struct {
 	locals Attrs
 }
 
+// Add adds a template to the current parsed templates
+func (t *Templates) Add(src string) error {
+	if _, err := t.parsed.Parse(src); err != nil {
+		return err
+	}
+	return nil
+}
+
 // SetAttr sets a local templates variable. Overwritten variables return an
 // error, which can be ignored as needed.
 func (t *Templates) SetAttr(key string, value interface{}) (err error) {
@@ -41,16 +49,16 @@ func (t *Templates) Execute(w io.Writer, n string, attrs ...Attrs) {
 // New creates a new Templates instance by compiling all files recursively in
 // the given directory. Panics on error.
 func New(path string, attrs ...Attrs) *Templates {
-	return new(path, "", "", attrs...)
+	return create(path, "", "", attrs...)
 }
 
 // New creates a new Templates instance by compiling all files recursively in
 // the given directory using the given delimiters. Panics on error.
 func NewWithDelims(path, openTag, closeTag string, attrs ...Attrs) *Templates {
-	return new(path, openTag, closeTag, attrs...)
+	return create(path, openTag, closeTag, attrs...)
 }
 
-func new(path, openTag, closeTag string, attrs ...Attrs) *Templates {
+func create(path, openTag, closeTag string, attrs ...Attrs) *Templates {
 	data := Attrs{}
 	for _, attr := range attrs {
 		data.Merge(attr)
@@ -82,4 +90,11 @@ func new(path, openTag, closeTag string, attrs ...Attrs) *Templates {
 		panic(fmt.Sprintf("templates: error while parsing templates: %s", err))
 	}
 	return t
+}
+
+// Empty Creates an empty Templates
+func Empty() *Templates {
+	return &Templates{
+		parsed: template.New("template"),
+	}
 }

@@ -28,6 +28,16 @@ func newTestWriter() *testWriter {
 // Check that testWriter implements the http.ResponseWriter
 var _ http.ResponseWriter = newTestWriter()
 
+func TestEmpty(t *testing.T) {
+	empty := Empty()
+	if err := empty.Add("{{fsfd"); err == nil {
+		t.Errorf("templates: Add failed to error when given a bad template")
+	}
+	if err := empty.Add(`{{ define "whatever" }}{{ .Whatever }}{{ end }}`); err != nil {
+		t.Errorf("templates: Add returned an error when given a proper template")
+	}
+}
+
 func TestTemplates(t *testing.T) {
 	// Parse the test_fixtures directory with a local variable
 	parsed := New("./test_fixtures/pass", Attrs{"Greeting": "Yo"})
