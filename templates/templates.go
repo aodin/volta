@@ -3,7 +3,7 @@ package templates
 import (
 	"fmt"
 	"html/template"
-	"net/http"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,7 +27,7 @@ func (t *Templates) SetAttr(key string, value interface{}) (err error) {
 
 // Execute will render the given template define name with the given attrs.
 // Panics on error, because that's how we roll.
-func (t *Templates) Execute(w http.ResponseWriter, n string, attrs ...Attrs) {
+func (t *Templates) Execute(w io.Writer, n string, attrs ...Attrs) {
 	data := Attrs{}
 	data.Merge(t.locals)
 	for _, attr := range attrs {
