@@ -36,6 +36,11 @@ func TestEmpty(t *testing.T) {
 	if err := empty.Add(`{{ define "whatever" }}{{ .Whatever }}{{ end }}`); err != nil {
 		t.Errorf("templates: Add returned an error when given a proper template")
 	}
+
+	// The whatever template should be added to the templates
+	var b []byte
+	buffer := bytes.NewBuffer(b)
+	empty.Execute(buffer, "whatever")
 }
 
 func TestTemplates(t *testing.T) {
