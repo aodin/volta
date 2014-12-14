@@ -25,5 +25,6 @@ _testmain.go
 *.sublime-workspace
 *.sublime-project
 
-# Any databases
+# Any databases or database configs
 *.db
+db.json

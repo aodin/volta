@@ -90,49 +90,49 @@ type PBKDF2_Base struct {
 	digest func() hash.Hash // TODO move to base hasher?
 }
 
-func (pbkH *PBKDF2_Base) Encode(cleartext, salt string) string {
+func (h *PBKDF2_Base) Encode(cleartext, salt string) string {
 	// TODO these []byte conversions are a bit silly
 	hashed := EncodeBase64String(
 		Pbkdf2(
 			[]byte(cleartext),
 			[]byte(salt),
-			pbkH.rounds,
-			pbkH.digest,
+			h.rounds,
+			h.digest,
 		),
 	)
 	return strings.Join(
 		[]string{
-			pbkH.Algorithm(),
-			fmt.Sprintf("%d", pbkH.rounds),
+			h.Algorithm(),
+			fmt.Sprintf("%d", h.rounds),
 			salt,
 			hashed,
 		},
 		"$")
 }
 
-func (pbkH *PBKDF2_Base) Verify(cleartext, encoded string) bool {
+func (h *PBKDF2_Base) Verify(cleartext, encoded string) bool {
 	// Split the saved hash apart
-	splitHash := strings.SplitN(encoded, "$", 4)
+	parts := strings.SplitN(encoded, "$", 4)
 
 	// The algorithm should match this hasher
-	algo := splitHash[0]
-	if algo != pbkH.Algorithm() {
+	algo := parts[0]
+	if algo != h.Algorithm() {
 		return false
 	}
-	rounds64, err := strconv.ParseInt(splitHash[1], 10, 0)
+	rounds64, err := strconv.ParseInt(parts[1], 10, 0)
 	if err != nil {
 		return false
 	}
 	rounds := int(rounds64)
-	salt := splitHash[2]
+	salt := parts[2]
 
 	// Generate a new hash using the given cleartext
-	hashed := Pbkdf2([]byte(cleartext), []byte(salt), rounds, pbkH.digest)
-	return ConstantTimeStringCompare(EncodeBase64String(hashed), splitHash[3])
+	hashed := Pbkdf2([]byte(cleartext), []byte(salt), rounds, h.digest)
+	return ConstantTimeStringCompare(EncodeBase64String(hashed), parts[3])
 }
 
-func NewPBKDF2Hasher(algorithm string, rounds int, digest func() hash.Hash) *PBKDF2_Base {
-	return &PBKDF2_Base{NewBaseHasher(algorithm), rounds, digest}
+func NewPBKDF2Hasher(alg string, n int, digest func() hash.Hash) *PBKDF2_Base {
+	return &PBKDF2_Base{NewBaseHasher(alg), n, digest}
 }
 
 func init() {

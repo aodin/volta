@@ -1,64 +1,182 @@
 package auth
 
 import (
-	"github.com/aodin/volta/config"
+	"crypto/subtle"
+	"fmt"
 	"net/http"
 	"time"
+
+	sql "github.com/aodin/aspect"
+
+	"github.com/aodin/volta/config"
 )
 
-// TODO distinguish between errors and nil responses
-// TODO An interfaces the implements all these required parameters
-func Login(w http.ResponseWriter, r *http.Request, username, password string, sessions SessionManager, users UserManager, hasher Hasher, c config.CookieConfig, loginURL string) (bool, error) {
-	// Get the requested user
-	user, err := users.Get(Fields{"name": username})
-	if err != nil {
-		return IgnoreUserErrors(w, r, err), err
-	}
+type Auth struct {
+	conn     sql.Connection
+	config   config.Config
+	users    *UserManager
+	sessions *SessionManager
+	tokens   *TokenManager
+	homeURL  string
 
-	// TODO hasher could be obtained from the password string
-	if !CheckPassword(hasher, password, user.Password()) {
-		return IgnoreUserErrors(w, r, err), err
-	}
-
-	// Create a new session
-	session, err := sessions.Create(user)
-	if err != nil {
-		return IgnoreUserErrors(w, r, err), err
-	}
-
-	SetCookie(w, c, session)
-	http.Redirect(w, r, loginURL, 302)
-	return true, nil
+	// For testing
+	now func() time.Time
 }
 
-func GetUserIfValidSession(sessions SessionManager, users UserManager, key string) User {
-	return getUserIfValidSession(sessions, users, key, time.Now)
+// ByPassword attempts to authenticate the given email using the given
+// cleartext password. On failure, a specific error will be returned.
+func (auth *Auth) ByPassword(email, password string) (user User, err error) {
+	// Get the user by email - emails MUST be unique
+	if user, err = auth.users.GetByEmail(email); err != nil {
+		user = User{} // Do not leak user information
+		return
+	}
+
+	// Check the cleartext versus encrypted password
+	if !CheckPassword(auth.users.Hasher(), password, user.Password) {
+		user = User{} // Do not leak user information
+		err = fmt.Errorf("auth: incorrect password for user %s", user.Email)
+	}
+	return
 }
 
-func getUserIfValidSession(sessions SessionManager, users UserManager, key string, nowFunc func() time.Time) User {
-	session, err := sessions.Get(key)
+// BySession returns an authenticated user if the given session is valid
+func (auth *Auth) BySession(key string) (user User) {
+	session := auth.sessions.Get(key)
+	if !session.Exists() {
+		return
+	}
+	if !session.Expires.After(auth.now()) {
+		return
+	}
+	user, _ = auth.users.GetByID(session.UserID)
+	return
+}
+
+// ByToken returns an authenticated user if the given token is valid for the
+// given user id. Tokens are used for API access.
+func (auth *Auth) ByToken(id int64, key string) (user User) {
+	// Do not query the database directly for the token key because that could
+	// leak information through a timing attack - B-trees, yo
+	for _, token := range auth.tokens.All(id) {
+		if len(key) != len(token.Key) {
+			continue
+		}
+		if subtle.ConstantTimeCompare([]byte(key), []byte(token.Key)) != 1 {
+			continue
+		}
+		// Expires is optional, check if it exists before checking if expired
+		if token.Expires != nil && token.Expires.After(auth.now()) {
+			continue
+		}
+		user, _ = auth.users.GetByID(token.UserID)
+		break
+	}
+	return
+}
+
+// ByUserToken returns an authenticated user if the given user's token
+// matches the given token. Companies are not added as this method
+// is used only for password resets and initial account creation.
+// The user token also is attached to the user's model, not the separate
+// tokens table, which is used for API access.
+func (auth *Auth) ByUserToken(id int64, key string) (user User, err error) {
+	// TODO get the user through the user manager?
+	stmt := Users.Select().Where(Users.C["id"].Equals(id))
+	if !auth.conn.MustQueryOne(stmt, &user) {
+		// TODO invalid token page / template?
+		err = fmt.Errorf("Invalid token")
+		return
+	}
+
+	if (len(key) != len(user.Token)) || subtle.ConstantTimeCompare([]byte(key), []byte(user.Token)) != 1 {
+		user = User{} // Don't leak user info
+		err = fmt.Errorf("Invalid token")
+	}
+	return
+}
+
+// CookieName returns the name of the cookie used by this auth
+func (auth *Auth) CookieName() string {
+	return auth.config.Cookie.Name
+}
+
+// CreateSession creates a new session for the given user and redirects to
+// the given next URL.
+func (auth *Auth) CreateSession(w http.ResponseWriter, user User) error {
+	session := auth.sessions.Create(user)
+	if !session.Exists() {
+		return fmt.Errorf("auth: could not create new session")
+	}
+	SetCookie(w, auth.config.Cookie, session)
+	return nil
+}
+
+func (auth *Auth) CreateSessionAndRedirect(w http.ResponseWriter, r *http.Request, user User, next string) error {
+	if err := auth.CreateSession(w, user); err != nil {
+		return err
+	}
+
+	// If no next variable was provided, default to /
+	if next == "" {
+		next = auth.homeURL
+	}
+	http.Redirect(w, r, next, 302)
+	return nil
+}
+
+// Logout removes the auth cookie's session key from the database
+func (auth *Auth) Logout(w http.ResponseWriter, r *http.Request) error {
+	// Remove the session
+	cookie, err := r.Cookie(auth.CookieName())
 	if err != nil {
 		return nil
 	}
-	if !session.Expires().After(nowFunc()) {
-		return nil
-	}
-	user, err := users.Get(Fields{"id": session.User()})
-	if err != nil {
-		return nil
-	}
-	return user
+	auth.sessions.Delete(cookie.Value)
+
+	// TODO Remove all sessions for this user? Global Logout?
+	// TODO delete the cookie?
+
+	http.Redirect(w, r, auth.homeURL, 302)
+	return nil
 }
 
-// IsValidSession checks if a session key exists in the given manager.
-func IsValidSession(m SessionManager, key string) bool {
-	return isValidSession(m, key, time.Now)
+// ResetUserToken generates a new user token and resets the token timestamp.
+func (auth *Auth) ResetUserToken(user *User) {
+	user.Token = RandomKey()
+	user.TokenSetAt = time.Now()
+
+	// Update the user before generating an email
+	stmt := Users.Update().Values(
+		sql.Values{"token": user.Token, "token_set_at": user.TokenSetAt},
+	).Where(Users.C["id"].Equals(user.ID))
+	auth.conn.MustExecute(stmt)
 }
 
-func isValidSession(m SessionManager, key string, nowFunc func() time.Time) bool {
-	session, err := m.Get(key)
-	if err != nil {
-		return false
+// MakePassword returns an encrypted string of the given cleartext password
+// using the auth user hasher.
+func (auth *Auth) MakePassword(cleartext string) string {
+	return MakePassword(auth.users.Hasher(), cleartext)
+}
+
+// New creates a new auth with users, sessions, and tokens
+func New(c config.Config, conn sql.Connection) *Auth {
+	return create(c, conn, NewUsers(conn))
+}
+
+// Mock creates a mock auth with mock users
+func Mock(c config.Config, conn sql.Connection) *Auth {
+	return create(c, conn, MockUsers(conn))
+}
+
+func create(c config.Config, conn sql.Connection, users *UserManager) *Auth {
+	return &Auth{
+		conn:     conn,
+		config:   c,
+		users:    users,
+		sessions: NewSessions(c.Cookie, conn),
+		tokens:   NewTokens(conn),
+		homeURL:  "/", // TODO Set this using the given config
+		now:      func() time.Time { return time.Now().In(time.UTC) },
 	}
-	return session.Expires().After(nowFunc())
 }

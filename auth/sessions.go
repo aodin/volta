@@ -1,141 +1,111 @@
 package auth
 
 import (
-	"crypto/rand"
-	"encoding/base64"
-	"github.com/aodin/volta/config"
-	"sync"
+	"fmt"
 	"time"
+
+	sql "github.com/aodin/aspect"
+
+	"github.com/aodin/volta/config"
 )
 
-type SessionManager interface {
-	Create(user User) (Session, error)
-	Get(key string) (Session, error)
-	Delete(key string) error
+// Session is a database-backed user session.
+type Session struct {
+	Key     string          `db:"key"`
+	UserID  int64           `db:"user_id"`
+	Expires time.Time       `db:"expires"`
+	manager *SessionManager `db:"-"`
 }
 
-// Session is an interface for sessions.
-type Session interface {
-	Key() string
-	Expires() time.Time
-	User() int64
-	Delete() error
-	// TODO Session data as JSON or map[string]interface{}?
-}
-
-// RandomKey generates a new 144 bit session key. It does so by producing 18
-// random bytes that are encoded in URL safe base64, for output of 24 chars.
-func RandomKey() (string, error) {
-	b := make([]byte, 18)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
+// Delete removes the session with the given key from the database.
+// It will return an error if the session does not have a key or the key
+// was not deleted from the database. It will panic on any connection error.
+func (session Session) Delete() error {
+	if !session.Exists() {
+		return fmt.Errorf("auth: keyless sessions cannot be deleted")
 	}
-	return base64.URLEncoding.EncodeToString(b), nil
+	return session.manager.Delete(session.Key)
 }
 
-// KeyFunc is the function type that will be used to generate new session keys.
-type KeyFunc func() (string, error)
+// Exists returns true if the session exists
+func (session Session) Exists() bool {
+	return session.Key != ""
+}
 
-// MemorySessions is an in-memory store of sessions.
-type MemorySessions struct {
-	mutex   sync.RWMutex
-	byKey   map[string]*session
+// Sessions is the postgres schema for sessions
+var Sessions = sql.Table("sessions",
+	sql.Column("key", sql.String{NotNull: true}),
+	sql.ForeignKey("user_id", Users.C["id"], sql.Integer{NotNull: true}),
+	sql.Column("expires", sql.Timestamp{WithTimezone: true, NotNull: true}),
+	sql.PrimaryKey("key"),
+)
+
+// SessionManager is the internal manager of sessions
+type SessionManager struct {
+	conn    sql.Connection
 	cookie  config.CookieConfig
 	keyFunc KeyFunc
 	nowFunc func() time.Time
 }
 
 // Create creates a new session using a key generated for the given User
-func (m *MemorySessions) Create(user User) (Session, error) {
-	// Lock the mutex for writing
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	s := &session{
-		userID:  user.ID(),
+func (m *SessionManager) Create(user User) (session Session) {
+	// Set the expires from the cookie config
+	session = Session{
+		Expires: m.nowFunc().Add(m.cookie.Age),
+		UserID:  user.ID,
 		manager: m,
 	}
 
-	// Set the expires from the cookie config
-	s.expires = m.nowFunc().Add(m.cookie.Age)
-
-	// Generate a new session key
-	var err error
+	// Generate a new random session key
 	for {
-		s.key, err = m.keyFunc()
-		if err != nil {
-			return s, NewServerError("auth: key generation error: %s", err)
-		}
-		if _, exists := m.byKey[s.key]; !exists {
+		session.Key = m.keyFunc()
+
+		// No duplicates - generate a new key if this key already exists
+		var duplicate string
+		stmt := sql.Select(
+			Sessions.C["key"],
+		).Where(Sessions.C["key"].Equals(session.Key)).Limit(1)
+		if !m.conn.MustQueryOne(stmt, &duplicate) {
 			break
 		}
 	}
-	m.byKey[s.key] = s
-	return s, nil
+
+	// Insert the session
+	m.conn.MustExecute(Sessions.Insert().Values(session))
+	return
 }
 
-// Get returns the session with the given key
-// Errors should only be returned on server error conditions (such as failed
-// database connections). If no session is found, a zero-initialized session
-// should be returned instead of an error.
-func (m *MemorySessions) Get(key string) (Session, error) {
-	// Lock the mutex for reading
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-
-	// Get the session at the given key
-	session, ok := m.byKey[key]
-	if !ok {
-		return session, NewUserError("auth: no session key %s exists", key)
+// Delete removes the session with the given key from the database.
+// It will return an error if the session key was not deleted from the
+// database. It will panic on any connection error.
+func (m *SessionManager) Delete(key string) error {
+	stmt := Sessions.Delete().Where(Sessions.C["key"].Equals(key))
+	rowsAffected, err := m.conn.MustExecute(stmt).RowsAffected()
+	if err != nil {
+		return fmt.Errorf("auth: error during rows affected: %s", err)
 	}
-	return session, nil
-}
-
-// Delete deletes the session with the given key.
-func (m *MemorySessions) Delete(key string) error {
-	// Lock the mutex for writing
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	// Delete the session at the given key
-	delete(m.byKey, key)
+	if rowsAffected == 0 {
+		return fmt.Errorf(
+			"auth: session key %s was not deleted - it may not exist", key,
+		)
+	}
 	return nil
 }
 
-// SessionsInMemory creates a new MemorySessions with default implementations
-// of keyFunc and nowFunc.
-func SessionsInMemory(c config.CookieConfig) *MemorySessions {
-	return &MemorySessions{
-		byKey:   make(map[string]*session),
+// Get returns the session with the given key.
+func (m *SessionManager) Get(key string) (session Session) {
+	stmt := Sessions.Select().Where(Sessions.C["key"].Equals(key))
+	m.conn.MustQueryOne(stmt, &session)
+	return
+}
+
+// NewSessions will create a new internal session manager
+func NewSessions(c config.CookieConfig, conn sql.Connection) *SessionManager {
+	return &SessionManager{
+		conn:    conn,
 		cookie:  c,
 		keyFunc: RandomKey,
-		nowFunc: time.Now,
+		nowFunc: func() time.Time { return time.Now().In(time.UTC) },
 	}
-}
-
-type session struct {
-	key     string
-	userID  int64
-	expires time.Time
-	manager *MemorySessions
-}
-
-// Key returns the session's key.
-func (s *session) Key() string {
-	return s.key
-}
-
-// Expires returns the session's expiration.
-func (s *session) Expires() time.Time {
-	return s.expires
-}
-
-// User returns UserID of the session.
-func (s *session) User() int64 {
-	return s.userID
-}
-
-func (s *session) Delete() error {
-	return s.manager.Delete(s.key)
 }

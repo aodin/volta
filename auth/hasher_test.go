@@ -1,24 +1,55 @@
 package auth
 
 import (
+	"crypto/sha1"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRegistry(t *testing.T) {
+	assert := assert.New(t)
+
 	// Get the hasher from the registry
 	pbkdf2_sha256, err := GetHasher("pbkdf2_sha256")
-	if err != nil {
-		// TODO best way to print an error?
-		t.Fatalf("Failed to get hasher with err %s", err)
-	}
+	assert.Nil(err, "GetHasher should not return an error")
+
+	// Hash a cleartext and verify
 	cleartext := "badpassword"
 	hashed := MakePassword(pbkdf2_sha256, cleartext)
-	// TODO some error output would be appreciated
-	verify := CheckPassword(pbkdf2_sha256, cleartext, hashed)
-	if !verify {
-		t.Errorf("Password did not verify!")
-	}
-}
+	assert.True(CheckPassword(pbkdf2_sha256, cleartext, hashed))
 
-// TODO Create a hash and plug it in
-// TODO test util functions
+	// Get a hasher that doesn't exist
+	_, err = GetHasher("dne")
+	assert.NotNil(err)
+
+	// Attempt to register a nil hasher
+	func() {
+		var panicked interface{}
+		defer func() {
+			panicked = recover()
+		}()
+		RegisterHasher("nil", nil)
+		if panicked == nil {
+			t.Fatalf("auth: registry failed to panic when given a nil hasher")
+		}
+	}()
+
+	// Create a hasher and register it
+	pbkdf2_crap := NewPBKDF2Hasher("pbkdf2_crap", 1, sha1.New)
+	RegisterHasher(pbkdf2_crap.algorithm, pbkdf2_crap)
+
+	// Twice
+	func() {
+		var panicked interface{}
+		defer func() {
+			panicked = recover()
+		}()
+		RegisterHasher(pbkdf2_crap.algorithm, pbkdf2_crap)
+		if panicked == nil {
+			t.Fatalf(
+				"auth: registry failed to panic when given a duplicate hasher",
+			)
+		}
+	}()
+}
