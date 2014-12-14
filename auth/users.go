@@ -79,23 +79,34 @@ type UserManager struct {
 // Create will create a new user with given email and cleartext password.
 // It will panic on any crypto or database connection errors.
 func (m *UserManager) Create(email, first, last, clear string) (User, error) {
+	return m.create(email, first, last, clear, false)
+}
+
+// CreateSuperuser will create a new superuser with given email and cleartext password.
+// It will panic on any crypto or database connection errors.
+func (m *UserManager) CreateSuperuser(email, first, last, clear string) (User, error) {
+	return m.create(email, first, last, clear, true)
+}
+
+func (m *UserManager) create(email, first, last, clear string, isAdmin bool) (User, error) {
 	user := User{
-		Email:      email,
-		FirstName:  first,
-		LastName:   last,
-		IsActive:   true,
-		Password:   MakePassword(m.hash, clear),
-		Token:      m.tokenFunc(),
-		TokenSetAt: time.Now(),
-		manager:    m,
+		Email:       email,
+		FirstName:   first,
+		LastName:    last,
+		IsActive:    true,
+		IsSuperuser: isAdmin,
+		Password:    MakePassword(m.hash, clear),
+		Token:       m.tokenFunc(),
+		TokenSetAt:  time.Now(),
+		manager:     m,
 	}
-	err := m.create(&user)
+	err := m.createUser(&user)
 	return user, err
 }
 
-// create checks for a duplicate email before inserting the user.
+// createUser checks for a duplicate email before inserting the user.
 // Email must already be normalized.
-func (m *UserManager) create(user *User) error {
+func (m *UserManager) createUser(user *User) error {
 	var duplicate string
 	email := sql.Select(
 		Users.C["email"],
