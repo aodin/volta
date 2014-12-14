@@ -96,10 +96,13 @@ func (m *UserManager) Create(email, first, last, clear string) (User, error) {
 // create checks for a duplicate email before inserting the user.
 // Email must already be normalized.
 func (m *UserManager) create(user *User) error {
-	email := Users.Select().Where(Users.C["email"].Equals(user.Email)).Limit(1)
-	if m.conn.MustQueryOne(email, user) {
+	var duplicate string
+	email := sql.Select(
+		Users.C["email"],
+	).Where(Users.C["email"].Equals(user.Email)).Limit(1)
+	if m.conn.MustQueryOne(email, &duplicate) {
 		return fmt.Errorf(
-			"auth: user with email %s already exists", user.Email,
+			"auth: user with email %s already exists", duplicate,
 		)
 	}
 

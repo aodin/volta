@@ -28,7 +28,7 @@ func TestAuth(t *testing.T) {
 	var err error
 
 	// Create a user, session, and a token
-	user, err := auth.users.Create("a@example.com", "admin", "guy", "secret")
+	user, err := auth.CreateUser("a@example.com", "admin", "guy", "secret")
 	require.Nil(t, err, "Error during user creation")
 	require.True(t, user.Exists(), "Failed to create user")
 
@@ -38,6 +38,11 @@ func TestAuth(t *testing.T) {
 
 	token := auth.tokens.ForeverToken(user)
 	assert.Equal(user.ID, token.UserID)
+
+	// Duplicate users cannot be created
+	invalid, err = auth.CreateUser("a@example.com", "admin", "guy", "secret")
+	require.NotNil(t, err, "Failed to error when creating duplicate user")
+	require.False(t, invalid.Exists(), "Invalid user was created")
 
 	// Update the user's existing token to perform auth by user token
 	auth.ResetUserToken(&user)

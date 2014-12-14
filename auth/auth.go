@@ -101,6 +101,11 @@ func (auth *Auth) CookieName() string {
 	return auth.config.Cookie.Name
 }
 
+// CreateUser creates a new user.
+func (auth *Auth) CreateUser(email, first, last, clear string) (User, error) {
+	return auth.users.Create(email, first, last, clear)
+}
+
 // CreateSession creates a new session for the given user and redirects to
 // the given next URL.
 func (auth *Auth) CreateSession(w http.ResponseWriter, user User) error {
@@ -157,6 +162,21 @@ func (auth *Auth) ResetUserToken(user *User) {
 // using the auth user hasher.
 func (auth *Auth) MakePassword(cleartext string) string {
 	return MakePassword(auth.users.Hasher(), cleartext)
+}
+
+// Users returns the internal user manager
+func (auth *Auth) Users() *UserManager {
+	return auth.users
+}
+
+// Sessions returns the internal session manager
+func (auth *Auth) Sessions() *SessionManager {
+	return auth.sessions
+}
+
+// Tokens returns the internal token manager
+func (auth *Auth) Tokens() *TokenManager {
+	return auth.tokens
 }
 
 // New creates a new auth with users, sessions, and tokens
