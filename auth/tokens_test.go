@@ -61,7 +61,7 @@ func TestTokens(t *testing.T) {
 	// And one that doesn't
 	assert.NotNil(
 		tokens.Delete("DNE"),
-		"Deleting a non-existant token should return an error",
+		"Deleting a token that does not exist should return an error",
 	)
 
 	// There should be one token left in the database

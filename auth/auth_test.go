@@ -1,6 +1,10 @@
 package auth
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/cookiejar"
+	"net/http/httptest"
 	"testing"
 
 	sql "github.com/aodin/aspect"
@@ -92,4 +96,70 @@ func TestAuth(t *testing.T) {
 
 	invalid = auth.ByToken(user.ID, "")
 	assert.False(invalid.Exists(), "A valid user returned from an empty token")
+
+	// Test getter methods
+	assert.NotNil(auth.Users(), "Users manager is missing")
+	assert.NotNil(auth.Sessions(), "Sessions manager is missing")
+	assert.NotNil(auth.Tokens(), "Tokens manager is missing")
+
+	// Start a test server
+	create := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth.CreateSessionAndRedirect(w, r, user, "/redirect")
+	})
+	ts := httptest.NewServer(create)
+	defer ts.Close()
+
+	jar, err := cookiejar.New(nil)
+	require.Nil(t, err, "Cookie jar creation errored")
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return fmt.Errorf("Redirects are disabled")
+		},
+		Jar: jar,
+	}
+
+	req, err := http.NewRequest("GET", ts.URL, nil)
+	require.Nil(t, err, "Could not create a new request")
+
+	// Send a request with a cookie jar
+	// An error is expected because of the custom redirect policy
+	res, err := client.Do(req)
+	require.NotNil(t, err, "Test server did not redirect")
+	assert.Equal(302, res.StatusCode)
+	cookies := res.Cookies()
+	require.Equal(t, 1, len(cookies))
+	assert.Equal(auth.CookieName(), cookies[0].Name)
+
+	location, err := res.Location()
+	require.Nil(t, err, "A location header was not set")
+	require.NotNil(t, location, "No location URL was returned")
+	assert.Equal(ts.URL+"/redirect", location.String())
+
+	// A session should not exist at the cookie's value
+	assert.True(
+		auth.Sessions().Get(cookies[0].Value).Exists(),
+		"Session was not created",
+	)
+
+	// Start a test server for logout
+	logout := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Error is ignored
+		auth.Logout(w, r)
+	})
+	logoutServer := httptest.NewServer(logout)
+	defer logoutServer.Close()
+
+	// Send the same cookie jar request to logout
+	res, err = client.Get(logoutServer.URL)
+	require.NotNil(t, err, "Test server did not redirect")
+	assert.Equal(302, res.StatusCode)
+
+	// The session should no longer exist
+	session = auth.Sessions().Get(cookies[0].Value)
+
+	// Also attempt a logout with a cookie - it should not error
+	assert.False(
+		auth.Sessions().Get(cookies[0].Value).Exists(),
+		"Session was not deleted",
+	)
 }

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	sql "github.com/aodin/aspect"
-	"github.com/aodin/aspect/postgres"
+	pg "github.com/aodin/aspect/postgres"
 )
 
 // Token is a database-backed user API token. The Expires field is nil if
@@ -42,7 +42,7 @@ var Tokens = sql.Table("tokens",
 		sql.Integer{NotNull: true},
 	).OnDelete(sql.Cascade),
 	sql.Column("expires", sql.Timestamp{WithTimezone: true}),
-	sql.Column("created_at", sql.Timestamp{Default: postgres.Now}),
+	sql.Column("created_at", sql.Timestamp{NotNull: true, Default: pg.Now}),
 	sql.PrimaryKey("key"),
 )
 
@@ -96,7 +96,7 @@ func (m *TokenManager) ForeverToken(user User) (token Token) {
 	}
 
 	// Insert the token into the database
-	st := postgres.Insert(Tokens).Values(token).Returning(Tokens.Columns()...)
+	st := pg.Insert(Tokens).Values(token).Returning(Tokens.Columns()...)
 	m.conn.MustQueryOne(st, &token)
 	return
 }

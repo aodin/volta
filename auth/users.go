@@ -7,7 +7,7 @@ import (
 	"time"
 
 	sql "github.com/aodin/aspect"
-	"github.com/aodin/aspect/postgres"
+	pg "github.com/aodin/aspect/postgres"
 )
 
 // User is a database-backed user.
@@ -54,18 +54,18 @@ func (user User) String() string {
 
 // Users is the postgres schema for users
 var Users = sql.Table("users",
-	sql.Column("id", postgres.Serial{NotNull: true}),
-	sql.Column("email", sql.String{Unique: true, NotNull: true, Length: 255}),
-	sql.Column("first_name", sql.String{Length: 255, NotNull: true, Default: sql.Blank}),
-	sql.Column("last_name", sql.String{Length: 255, NotNull: true, Default: sql.Blank}),
-	sql.Column("about", sql.String{Length: 511, NotNull: true, Default: sql.Blank}),
-	sql.Column("photo", sql.String{Length: 511, NotNull: true, Default: sql.Blank}),
-	sql.Column("is_active", sql.Boolean{Default: sql.True}),
-	sql.Column("is_superuser", sql.Boolean{Default: sql.False}),
-	sql.Column("password", sql.String{Length: 255, NotNull: true}),
-	sql.Column("token", sql.String{Length: 255, NotNull: true, Default: sql.Blank}),
-	sql.Column("token_set_at", sql.Timestamp{Default: postgres.Now}),
-	sql.Column("created_at", sql.Timestamp{Default: postgres.Now}),
+	sql.Column("id", pg.Serial{NotNull: true}),
+	sql.Column("email", sql.String{Length: 256, Unique: true, NotNull: true}),
+	sql.Column("first_name", sql.String{Length: 64, NotNull: true}),
+	sql.Column("last_name", sql.String{Length: 64, NotNull: true}),
+	sql.Column("about", sql.String{Length: 512, NotNull: true}),
+	sql.Column("photo", sql.String{Length: 512, NotNull: true}),
+	sql.Column("is_active", sql.Boolean{NotNull: true, Default: sql.True}),
+	sql.Column("is_superuser", sql.Boolean{NotNull: true, Default: sql.False}),
+	sql.Column("password", sql.String{Length: 256, NotNull: true}),
+	sql.Column("token", sql.String{Length: 256, NotNull: true}),
+	sql.Column("token_set_at", sql.Timestamp{NotNull: true, Default: pg.Now}),
+	sql.Column("created_at", sql.Timestamp{NotNull: true, Default: pg.Now}),
 	sql.PrimaryKey("id"),
 )
 
@@ -118,7 +118,7 @@ func (m *UserManager) createUser(user *User) error {
 	}
 
 	// Insert the new user
-	stmt := postgres.Insert(Users).Returning(Users.Columns()...).Values(user)
+	stmt := pg.Insert(Users).Returning(Users.Columns()...).Values(user)
 	m.conn.MustQueryOne(stmt, user)
 	return nil
 }
