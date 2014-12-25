@@ -54,9 +54,12 @@ func TestTokens(t *testing.T) {
 
 	// Delete a token that exists
 	assert.Nil(
-		tokens.Delete(repeat.Key),
+		repeat.Delete(),
 		"Deleting an existing token returned an error",
 	)
+
+	// Attempt to delete a keyless token
+	assert.NotNil(Token{}.Delete(), "Deleting a keyless token should error")
 
 	// And one that doesn't
 	assert.NotNil(
@@ -70,5 +73,4 @@ func TestTokens(t *testing.T) {
 	// Delete the user, it should clear the remaining token
 	assert.Nil(user.Delete(), "Deleting a user should not return an error")
 	assert.Equal(0, countTokens(tx))
-
 }

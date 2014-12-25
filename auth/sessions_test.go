@@ -60,4 +60,17 @@ func TestSessions(t *testing.T) {
 	sessions := NewSessions(config.DefaultCookie, tx)
 	session := sessions.Create(admin)
 	assert.Equal(admin.ID, session.UserID)
+
+	// Delete a session
+	assert.Nil(session.Delete(), "Deleting a session returned an error")
+
+	// Delete a session that does not exist
+	assert.NotNil(
+		sessions.Delete("DNE"),
+		"Deleting a session that does not exist should error",
+	)
+
+	// Delete a session without an ID
+	assert.NotNil(Session{}.Delete(), "Keyless session delete did not error")
+
 }
