@@ -23,3 +23,15 @@ func (ps Params) ByName(name string) string {
 	}
 	return ""
 }
+
+// EqualsAny is true if the give parameter name equals any of the given values.
+// An empty string is both a valid name and value.
+func (ps Params) EqualsAny(name string, values ...string) bool {
+	value := ps.ByName(name)
+	for _, v := range values {
+		if value == v {
+			return true
+		}
+	}
+	return false
+}

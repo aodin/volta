@@ -2,22 +2,28 @@ package router
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParams(t *testing.T) {
-	// Create a param
-	id := Param{Key: "id", Value: "1"}
+	assert := assert.New(t)
 
 	// Create a slice of params
-	params := Params{id}
+	params := Params{{Key: "id", Value: "1"}}
+	assert.Equal("1", params.ByName("id"), "Parameter 'id' should exist")
+	assert.Equal("", params.ByName("name"), "Parameter 'name' shouldn't exist")
 
-	// Get the id back out
-	if exists := params.ByName("id"); exists != "1" {
-		t.Fatalf("unexpected value of id parameter: %s", exists)
-	}
-
-	// Get a parameter that doesn't exist
-	if doesnt := params.ByName("name"); doesnt != "" {
-		t.Fatalf("unexpected value returned by name parameter: %s", doesnt)
-	}
+	assert.True(
+		params.EqualsAny("id", "0", "1", "2"),
+		"EqualsAny should have found a match",
+	)
+	assert.False(
+		params.EqualsAny("id", "a", "b", "c"),
+		"EqualsAny should not have succeeded",
+	)
+	assert.False(
+		params.EqualsAny("name", "0", "1", "2"),
+		"A parameter that does not exist should not match non-empty values",
+	)
 }
