@@ -1,6 +1,6 @@
 package router
 
-import ()
+import "strconv"
 
 // Param is a single URL parameter, consisting of a key and a value.
 type Param struct {
@@ -34,4 +34,10 @@ func (ps Params) EqualsAny(name string, values ...string) bool {
 		}
 	}
 	return false
+}
+
+// AsID returns the value of the requested param as an int64
+func (ps Params) AsID(name string) int64 {
+	id, _ := strconv.ParseInt(ps.ByName(name), 10, 64)
+	return id
 }
