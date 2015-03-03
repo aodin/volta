@@ -1,8 +1,6 @@
 package config
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // SMTPConfig contains the fields needed to connect to a SMTP server.
 type SMTPConfig struct {

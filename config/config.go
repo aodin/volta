@@ -27,6 +27,7 @@ type Config struct {
 	Database    DatabaseConfig `json:"database"`
 	Cookie      CookieConfig   `json:"cookie"`
 	SMTP        SMTPConfig     `json:"smtp"`
+	Metadata    Metadata       `json:"metadata"`
 }
 
 // Address returns the domain:port pair.
@@ -34,8 +35,9 @@ func (c Config) Address() string {
 	return fmt.Sprintf("%s:%d", c.Domain, c.Port)
 }
 
-// ProxyURL returns the domain:port scheme. Port is omitted if 80.
-func (c Config) URL() (u url.URL) {
+// URL returns the domain:port scheme. Port is omitted if 80.
+func (c Config) URL() (u *url.URL) {
+	u = &url.URL{}
 	if c.HTTPS {
 		u.Scheme = "https"
 	} else {
@@ -58,25 +60,9 @@ func (c Config) URL() (u url.URL) {
 	return
 }
 
+// FullAddress returns the scheme, domain, port, and host
 func (c Config) FullAddress() string {
-	protocol := "http"
-	if c.HTTPS {
-		protocol = "https"
-	}
-
-	domain := c.ProxyDomain
-	if domain == "" {
-		domain = c.Domain
-	}
-
-	port := c.ProxyPort
-	if port == 0 {
-		port = c.Port
-	}
-	if port == 80 {
-		return fmt.Sprintf("%s://%s", protocol, domain)
-	}
-	return fmt.Sprintf("%s://%s:%d", protocol, domain, port)
+	return c.URL().String()
 }
 
 // Parse will create a Config using the file settings.json in the
@@ -115,6 +101,7 @@ var Default = Config{
 	Cookie:    DefaultCookie,
 	Port:      8080,
 	StaticURL: "/static/",
+	Metadata:  Metadata{},
 }
 
 // DefaultConfig will return a basic configuration with insecure values. It

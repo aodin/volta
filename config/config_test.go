@@ -12,17 +12,19 @@ func TestConfig(t *testing.T) {
 	assert := assert.New(t)
 
 	c, err := ParseFile("./test_fixtures/settings.json")
-	assert.Nil(err)
+	assert.Nil(err, "Parse file should not error")
 
 	// Test the parent config methods
 	assert.Equal("localhost:9001", c.Address())
-	assert.Equal("http://localhost:9001", c.FullAddress())
+	assert.Equal("http://localhost:9001", c.URL().String())
+	assert.Equal(c.URL().String(), c.FullAddress())
+	assert.Equal("1.0.0", c.Metadata.Get("version"))
 
 	c.ProxyDomain = "example.com"
 	c.ProxyPort = 3000
 	assert.Equal("http://example.com:3000", c.FullAddress())
 	assert.Equal(
-		url.URL{Scheme: "http", Host: "example.com:3000"},
+		&url.URL{Scheme: "http", Host: "example.com:3000"},
 		c.URL(),
 	)
 
@@ -30,7 +32,7 @@ func TestConfig(t *testing.T) {
 	c.HTTPS = true
 	assert.Equal("https://example.com", c.FullAddress())
 	assert.Equal(
-		url.URL{Scheme: "https", Host: "example.com"},
+		&url.URL{Scheme: "https", Host: "example.com"},
 		c.URL(),
 	)
 

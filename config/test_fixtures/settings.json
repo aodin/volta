@@ -16,5 +16,8 @@
         "name": "db",
         "user": "pg",
         "password": "pass" 
+    },
+    "metadata": {
+        "version": "1.0.0"
     }
 }
