@@ -1,9 +1,8 @@
-Volta
+Volta [![GoDoc](http://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/aodin/volta) [![Build Status](https://travis-ci.org/aodin/volta.svg)](https://travis-ci.org/aodin/volta)
 =====
 
 A library for building web applications in Go.
 
-[![Build Status](https://travis-ci.org/aodin/volta.svg)](https://travis-ci.org/aodin/volta)
 
 ### Auth
 
@@ -13,6 +12,11 @@ Postgres-backed auth users, sessions, and tokens using [aspect](https://github.c
 ### Config
 
 Provides default implementations and JSON-writable configurations for server, database, email, and cookie settings.
+
+
+### Router
+
+Built upon Julien Schmidt's [httprouter](https://github.com/julienschmidt/httprouter). It adds a User and parameters directly to the request type. It also returns an optional error.
 
 
 ### Templates
