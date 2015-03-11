@@ -96,7 +96,7 @@ func (m *TokenManager) ForeverToken(user User) (token Token) {
 	}
 
 	// Insert the token into the database
-	st := pg.Insert(Tokens).Values(token).Returning(Tokens.Columns()...)
+	st := pg.Insert(Tokens).Values(token).Returning(Tokens)
 	m.conn.MustQueryOne(st, &token)
 	return
 }

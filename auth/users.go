@@ -118,7 +118,7 @@ func (m *UserManager) createUser(user *User) error {
 	}
 
 	// Insert the new user
-	stmt := pg.Insert(Users).Returning(Users.Columns()...).Values(user)
+	stmt := pg.Insert(Users).Values(user).Returning(Users)
 	m.conn.MustQueryOne(stmt, user)
 	return nil
 }
