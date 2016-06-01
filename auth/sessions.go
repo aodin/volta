@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	sql "github.com/aodin/aspect"
-
-	"github.com/aodin/volta/config"
+	"github.com/aodin/config"
+	"github.com/aodin/sol"
+	"github.com/aodin/sol/postgres"
+	"github.com/aodin/sol/types"
 )
 
 // Session is a database-backed user session.
@@ -33,17 +34,21 @@ func (session Session) Exists() bool {
 }
 
 // Sessions is the postgres schema for sessions
-var Sessions = sql.Table("sessions",
-	sql.Column("key", sql.String{NotNull: true}),
-	sql.ForeignKey("user_id", Users.C["id"], sql.Integer{NotNull: true}),
-	sql.Column("expires", sql.Timestamp{WithTimezone: true, NotNull: true}),
-	sql.PrimaryKey("key"),
+var Sessions = postgres.Table("sessions",
+	sol.Column("key", types.Varchar().NotNull()),
+	sol.ForeignKey(
+		"user_id",
+		Users.C("id"),
+		types.Integer().NotNull(),
+	).OnDelete(sol.Cascade).OnUpdate(sol.Cascade),
+	sol.Column("expires", postgres.Timestamp().WithTimezone()),
+	sol.PrimaryKey("key"),
 )
 
 // SessionManager is the internal manager of sessions
 type SessionManager struct {
-	conn    sql.Connection
-	cookie  config.CookieConfig
+	conn    sol.Conn
+	cookie  config.Cookie
 	keyFunc KeyFunc
 	nowFunc func() time.Time
 }
@@ -63,45 +68,35 @@ func (m *SessionManager) Create(user User) (session Session) {
 
 		// No duplicates - generate a new key if this key already exists
 		var duplicate string
-		stmt := sql.Select(
-			Sessions.C["key"],
-		).Where(Sessions.C["key"].Equals(session.Key)).Limit(1)
-		if !m.conn.MustQueryOne(stmt, &duplicate) {
+		stmt := sol.Select(
+			Sessions.C("key"),
+		).Where(Sessions.C("key").Equals(session.Key)).Limit(1)
+		m.conn.Query(stmt, &duplicate)
+		if duplicate == "" {
 			break
 		}
 	}
 
 	// Insert the session
-	m.conn.MustExecute(Sessions.Insert().Values(session))
+	m.conn.Query(Sessions.Insert().Values(session))
 	return
 }
 
 // Delete removes the session with the given key from the database.
-// It will return an error if the session key was not deleted from the
-// database. It will panic on any connection error.
 func (m *SessionManager) Delete(key string) error {
-	stmt := Sessions.Delete().Where(Sessions.C["key"].Equals(key))
-	rowsAffected, err := m.conn.MustExecute(stmt).RowsAffected()
-	if err != nil {
-		return fmt.Errorf("auth: error during rows affected: %s", err)
-	}
-	if rowsAffected == 0 {
-		return fmt.Errorf(
-			"auth: session key %s was not deleted - it may not exist", key,
-		)
-	}
-	return nil
+	stmt := Sessions.Delete().Where(Sessions.C("key").Equals(key))
+	return m.conn.Query(stmt)
 }
 
 // Get returns the session with the given key.
 func (m *SessionManager) Get(key string) (session Session) {
-	stmt := Sessions.Select().Where(Sessions.C["key"].Equals(key))
-	m.conn.MustQueryOne(stmt, &session)
+	stmt := Sessions.Select().Where(Sessions.C("key").Equals(key))
+	m.conn.Query(stmt, &session)
 	return
 }
 
 // NewSessions will create a new internal session manager
-func NewSessions(c config.CookieConfig, conn sql.Connection) *SessionManager {
+func NewSessions(c config.Cookie, conn sol.Conn) *SessionManager {
 	return &SessionManager{
 		conn:    conn,
 		cookie:  c,

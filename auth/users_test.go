@@ -4,23 +4,18 @@ import (
 	"fmt"
 	"testing"
 
-	sql "github.com/aodin/aspect"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestUsers(t *testing.T) {
 	assert := assert.New(t)
-	assert.Equal(Users.Name, "users")
+	assert.Equal(Users.Name(), "users")
 
-	// Create the test schema
-	conn, dbtx := initSchemas(t, Users, Sessions, Tokens)
-	defer dbtx.Rollback()
-	defer conn.Close()
-
-	// Some of these operations are transactional
-	tx := sql.FakeTx(dbtx)
+	// Get a blank DB and create the schemas
+	tx, _ := getConn(t).Must().Begin()
+	defer tx.Rollback()
+	initSchema(tx, Users, Sessions, Tokens)
 
 	// Create a new users manager with the default hasher - pbkdf2_sha256
 	users := NewUsers(tx)
@@ -33,7 +28,6 @@ func TestUsers(t *testing.T) {
 	dne, err := users.GetByID(0)
 	assert.NotNil(err, "Getting non-existing users by ID should error")
 	assert.False(dne.Exists(), "A non-existing user should not exist")
-	assert.NotNil(users.Delete(0), "Deleting a non-existing ID should error")
 
 	// Only users with IDs can be deleted
 	assert.NotNil(User{}.Delete(), "Delete did not error for a zero ID user")

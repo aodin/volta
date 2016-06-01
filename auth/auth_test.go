@@ -5,25 +5,56 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"os"
+	"sync"
 	"testing"
 
-	sql "github.com/aodin/aspect"
-	"github.com/aodin/volta/config"
+	"github.com/aodin/config"
+	"github.com/aodin/sol"
+	_ "github.com/aodin/sol/postgres" // Driver import
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var testconn *sol.DB
+var once sync.Once
+
+// getConn returns a postgres connection pool
+func getConn(t *testing.T) *sol.DB {
+	credentials := os.Getenv("VOLTA_TEST")
+	if credentials == "" {
+		t.Fatalf("No testing database credentials set (VOLTA_TEST)")
+	}
+
+	once.Do(func() {
+		var err error
+		// TODO allow the driver to be chosen
+		if testconn, err = sol.Open("postgres", credentials); err != nil {
+			t.Fatalf("Failed to open connection: %s", err)
+		}
+		testconn.SetMaxOpenConns(20)
+	})
+	return testconn
+}
+
+func initSchema(conn sol.Conn, tables ...sol.Tabular) {
+	// Create the given schemas
+	for _, table := range tables {
+		if table == nil || table.Table() == nil {
+			continue
+		}
+		conn.Query(table.Table().Create().IfNotExists().Temporary())
+	}
+}
 
 func TestAuth(t *testing.T) {
 	// Create a mock auth using the testing database
 	assert := assert.New(t)
 
-	// Create the test schema
-	conn, dbtx := initSchemas(t, Users, Sessions, Tokens)
-	defer dbtx.Rollback()
-	defer conn.Close()
-
-	// Some of these operations are transactional
-	tx := sql.FakeTx(dbtx)
+	// Get a blank DB and create the schemas
+	tx, _ := getConn(t).Must().Begin()
+	defer tx.Rollback()
+	initSchema(tx, Users, Sessions, Tokens)
 
 	// Create a mock Auth and test its methods
 	auth := Mock(config.Default, tx)

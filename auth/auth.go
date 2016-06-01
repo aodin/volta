@@ -6,13 +6,12 @@ import (
 	"net/http"
 	"time"
 
-	sql "github.com/aodin/aspect"
-
-	"github.com/aodin/volta/config"
+	"github.com/aodin/config"
+	"github.com/aodin/sol"
 )
 
 type Auth struct {
-	conn     sql.Connection
+	conn     sol.Conn
 	config   config.Config
 	users    *UserManager
 	sessions *SessionManager
@@ -82,9 +81,9 @@ func (auth *Auth) ByToken(id int64, key string) (user User) {
 // tokens table, which is used for API access.
 func (auth *Auth) ByUserToken(id int64, key string) (user User, err error) {
 	// TODO get the user through the user manager?
-	stmt := Users.Select().Where(Users.C["id"].Equals(id))
-	if !auth.conn.MustQueryOne(stmt, &user) {
-		// TODO invalid token page / template?
+	stmt := Users.Select().Where(Users.C("id").Equals(id))
+	auth.conn.Query(stmt, &user)
+	if !user.Exists() {
 		err = fmt.Errorf("Invalid token")
 		return
 	}
@@ -153,9 +152,9 @@ func (auth *Auth) ResetUserToken(user *User) {
 
 	// Update the user before generating an email
 	stmt := Users.Update().Values(
-		sql.Values{"token": user.Token, "token_set_at": user.TokenSetAt},
-	).Where(Users.C["id"].Equals(user.ID))
-	auth.conn.MustExecute(stmt)
+		sol.Values{"token": user.Token, "token_set_at": user.TokenSetAt},
+	).Where(Users.C("id").Equals(user.ID))
+	auth.conn.Query(stmt)
 }
 
 // MakePassword returns an encrypted string of the given cleartext password
@@ -180,16 +179,16 @@ func (auth *Auth) Tokens() *TokenManager {
 }
 
 // New creates a new auth with users, sessions, and tokens
-func New(c config.Config, conn sql.Connection) *Auth {
+func New(c config.Config, conn sol.Conn) *Auth {
 	return create(c, conn, NewUsers(conn))
 }
 
 // Mock creates a mock auth with mock users
-func Mock(c config.Config, conn sql.Connection) *Auth {
+func Mock(c config.Config, conn sol.Conn) *Auth {
 	return create(c, conn, MockUsers(conn))
 }
 
-func create(c config.Config, conn sql.Connection, users *UserManager) *Auth {
+func create(c config.Config, conn sol.Conn, users *UserManager) *Auth {
 	return &Auth{
 		conn:     conn,
 		config:   c,

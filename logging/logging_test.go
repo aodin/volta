@@ -72,7 +72,7 @@ func TestLogRequest(t *testing.T) {
 	ts.views = make([]View, 0)
 
 	// Test the escaping of the URL, Agent, and Referer
-	request, err = http.NewRequest(`"HACK"`, server.URL, nil)
+	request, err = http.NewRequest("GET", server.URL, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,6 +88,6 @@ func TestLogRequest(t *testing.T) {
 		t.Fatalf("Unexpected length of test server views:", len(ts.views))
 	}
 
-	expectedString := `"\"HACK\" /" 127.0.0.1 "\"HACKER\"" "\"ESCAPE\""`
+	expectedString := `"GET /" 127.0.0.1 "\"HACKER\"" "\"ESCAPE\""`
 	expectString(t, ts.views[0].String(), expectedString)
 }

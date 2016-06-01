@@ -13,8 +13,8 @@ func TestParams(t *testing.T) {
 	params := Params{{Key: "id", Value: "1"}}
 	assert.Equal("1", params.ByName("id"), "Parameter 'id' should exist")
 	assert.Equal("", params.ByName("name"), "Parameter 'name' shouldn't exist")
-	assert.Equal(1, params.AsID("id"), "Parameter 'id' should be an integer")
-	assert.Equal(0, params.AsID("name"), "Parameter 'name' should return as 0")
+	assert.EqualValues(1, params.AsID("id"), "Parameter 'id' should be an integer")
+	assert.EqualValues(0, params.AsID("name"), "Parameter 'name' should return as 0")
 
 	assert.True(
 		params.EqualsAny("id", "0", "1", "2"),

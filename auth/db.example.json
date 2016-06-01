@@ -1,9 +1,0 @@
-{
-    "driver": "postgres",
-    "host": "localhost",
-    "port": 5432,
-    "name": "auth_test",
-    "user": "",
-    "password": "",
-    "ssl_mode": "disable"
-}

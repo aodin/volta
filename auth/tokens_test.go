@@ -3,23 +3,17 @@ package auth
 import (
 	"testing"
 
-	sql "github.com/aodin/aspect"
-	_ "github.com/aodin/aspect/postgres"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func countTokens(conn sql.Connection) (count int64) {
-	conn.MustQueryOne(sql.Select(sql.Count(Tokens.C["key"])), &count)
-	return
-}
-
 func TestTokens(t *testing.T) {
 	assert := assert.New(t)
 
-	conn, tx := initSchemas(t, Users, Sessions, Tokens)
+	// Get a blank DB and create the schemas
+	tx, _ := getConn(t).Must().Begin()
 	defer tx.Rollback()
-	defer conn.Close()
+	initSchema(tx, Users, Sessions, Tokens)
 
 	users := MockUsers(tx)
 	tokens := NewTokens(tx)
@@ -42,6 +36,9 @@ func TestTokens(t *testing.T) {
 	repeat := tokens.ForeverToken(user)
 	assert.Equal(user.ID, repeat.UserID)
 
+	// There should now be two tokens
+	assert.EqualValues(2, tokens.Count())
+
 	// Get a token that should exist
 	byKey := tokens.Get(repeat.Key)
 	assert.True(byKey.Exists(), "Token not returned from Get()")
@@ -61,16 +58,10 @@ func TestTokens(t *testing.T) {
 	// Attempt to delete a keyless token
 	assert.NotNil(Token{}.Delete(), "Deleting a keyless token should error")
 
-	// And one that doesn't
-	assert.NotNil(
-		tokens.Delete("DNE"),
-		"Deleting a token that does not exist should return an error",
-	)
-
 	// There should be one token left in the database
-	assert.Equal(1, countTokens(tx))
+	assert.EqualValues(1, tokens.Count())
 
 	// Delete the user, it should clear the remaining token
 	assert.Nil(user.Delete(), "Deleting a user should not return an error")
-	assert.Equal(0, countTokens(tx))
+	assert.EqualValues(0, tokens.Count())
 }

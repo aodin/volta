@@ -6,8 +6,9 @@ import (
 	"log"
 	"time"
 
-	sql "github.com/aodin/aspect"
-	pg "github.com/aodin/aspect/postgres"
+	"github.com/aodin/sol"
+	"github.com/aodin/sol/postgres"
+	"github.com/aodin/sol/types"
 )
 
 // User is a database-backed user.
@@ -53,25 +54,32 @@ func (user User) String() string {
 }
 
 // Users is the postgres schema for users
-var Users = sql.Table("users",
-	sql.Column("id", pg.Serial{NotNull: true}),
-	sql.Column("email", sql.String{Length: 256, Unique: true, NotNull: true}),
-	sql.Column("first_name", sql.String{Length: 64, NotNull: true}),
-	sql.Column("last_name", sql.String{Length: 64, NotNull: true}),
-	sql.Column("about", sql.String{Length: 512, NotNull: true}),
-	sql.Column("photo", sql.String{Length: 512, NotNull: true}),
-	sql.Column("is_active", sql.Boolean{NotNull: true, Default: sql.True}),
-	sql.Column("is_superuser", sql.Boolean{NotNull: true, Default: sql.False}),
-	sql.Column("password", sql.String{Length: 256, NotNull: true}),
-	sql.Column("token", sql.String{Length: 256, NotNull: true}),
-	sql.Column("token_set_at", sql.Timestamp{NotNull: true, Default: pg.Now}),
-	sql.Column("created_at", sql.Timestamp{NotNull: true, Default: pg.Now}),
-	sql.PrimaryKey("id"),
+var Users = postgres.Table("users",
+	sol.Column("id", postgres.Serial()),
+	sol.Column("email", types.Varchar().Limit(256).NotNull()),
+	sol.Column("first_name", types.Varchar().Limit(64).NotNull()),
+	sol.Column("last_name", types.Varchar().Limit(64).NotNull()),
+	sol.Column("about", types.Varchar().Limit(512).NotNull()),
+	sol.Column("photo", types.Varchar().Limit(512).NotNull()),
+	sol.Column("is_active", types.Boolean().NotNull().Default(true)),
+	sol.Column("is_superuser", types.Boolean().NotNull().Default(false)),
+	sol.Column("password", types.Varchar().Limit(256).NotNull()),
+	sol.Column("token", types.Varchar().Limit(256).NotNull()),
+	sol.Column(
+		"token_set_at",
+		postgres.Timestamp().WithTimezone().NotNull().Default(postgres.Now),
+	),
+	sol.Column(
+		"created_at",
+		postgres.Timestamp().WithTimezone().NotNull().Default(postgres.Now),
+	),
+	sol.PrimaryKey("id"),
+	sol.Unique("email"),
 )
 
 // UserManager is the internal manager of users
 type UserManager struct {
-	conn      sql.Connection
+	conn      sol.Conn
 	hash      Hasher
 	tokenFunc KeyFunc
 }
@@ -107,19 +115,20 @@ func (m *UserManager) create(email, first, last, clear string, isAdmin bool) (Us
 // createUser checks for a duplicate email before inserting the user.
 // Email must already be normalized.
 func (m *UserManager) createUser(user *User) error {
+	email := sol.Select(
+		Users.C("email"),
+	).Where(Users.C("email").Equals(user.Email)).Limit(1)
+
 	var duplicate string
-	email := sql.Select(
-		Users.C["email"],
-	).Where(Users.C["email"].Equals(user.Email)).Limit(1)
-	if m.conn.MustQueryOne(email, &duplicate) {
+	m.conn.Query(email, &duplicate)
+	if duplicate != "" {
 		return fmt.Errorf(
 			"auth: user with email %s already exists", duplicate,
 		)
 	}
 
 	// Insert the new user
-	stmt := pg.Insert(Users).Values(user).Returning(Users)
-	m.conn.MustQueryOne(stmt, user)
+	m.conn.Query(postgres.Insert(Users).Values(user).Returning(), user)
 	return nil
 }
 
@@ -127,21 +136,17 @@ func (m *UserManager) createUser(user *User) error {
 // It will return an error if the ID was not deleted from the database.
 // It will panic on any connection error.
 func (m *UserManager) Delete(id int64) error {
-	stmt := Users.Delete().Where(Users.C["id"].Equals(id))
-	rowsAffected, err := m.conn.MustExecute(stmt).RowsAffected()
-	if err != nil {
-		return fmt.Errorf("auth: error during rows affected: %s", err)
-	}
-	if rowsAffected == 0 {
-		return fmt.Errorf("auth: user ID %d was not deleted", id)
-	}
-	return nil
+	stmt := Users.Delete().Where(Users.C("id").Equals(id))
+	return m.conn.Query(stmt)
 }
 
 // GetByEmail returns the user with the given email.
 func (m *UserManager) GetByEmail(email string) (user User, err error) {
-	stmt := Users.Select().Where(Users.C["email"].Equals(email))
-	if !m.conn.MustQueryOne(stmt, &user) {
+	stmt := Users.Select().Where(Users.C("email").Equals(email))
+	if err = m.conn.Query(stmt, &user); err != nil {
+		return
+	}
+	if !user.Exists() {
 		err = fmt.Errorf("auth: no user with email %s exists", email)
 	}
 	return
@@ -149,8 +154,11 @@ func (m *UserManager) GetByEmail(email string) (user User, err error) {
 
 // GetByID returns the user with the given id.
 func (m *UserManager) GetByID(id int64) (user User, err error) {
-	stmt := Users.Select().Where(Users.C["id"].Equals(id))
-	if !m.conn.MustQueryOne(stmt, &user) {
+	stmt := Users.Select().Where(Users.C("id").Equals(id))
+	if err = m.conn.Query(stmt, &user); err != nil {
+		return
+	}
+	if !user.Exists() {
 		err = fmt.Errorf("auth: no user with id %d exists", id)
 	}
 	return
@@ -161,7 +169,7 @@ func (m UserManager) Hasher() Hasher {
 	return m.hash
 }
 
-func NewUsers(conn sql.Connection) *UserManager {
+func NewUsers(conn sol.Conn) *UserManager {
 	hasher, err := GetHasher("pbkdf2_sha256")
 	if err != nil {
 		log.Panicf("auth: could not get pbkdf2_sha256 hasher: %s", err)
@@ -169,11 +177,11 @@ func NewUsers(conn sql.Connection) *UserManager {
 	return newUsers(conn, hasher)
 }
 
-func MockUsers(conn sql.Connection) *UserManager {
+func MockUsers(conn sol.Conn) *UserManager {
 	return newUsers(conn, MockHasher("mock", 1, sha1.New))
 }
 
-func newUsers(conn sql.Connection, hash Hasher) *UserManager {
+func newUsers(conn sol.Conn, hash Hasher) *UserManager {
 	return &UserManager{
 		conn:      conn,
 		hash:      hash,

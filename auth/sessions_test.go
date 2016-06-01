@@ -3,45 +3,18 @@ package auth
 import (
 	"testing"
 
-	sql "github.com/aodin/aspect"
+	"github.com/aodin/config"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	"github.com/aodin/volta/config"
 )
-
-func initSchemas(t *testing.T, tables ...*sql.TableElem) (*sql.DB, sql.Transaction) {
-	// Connect to the database specified in the test db.json config
-	// Default to the Travis CI settings if no file is found
-	conf, err := sql.ParseTestConfig("./db.json")
-	if err != nil {
-		t.Fatalf(
-			"auth: failed to parse test configuration, test aborted: %s",
-			err,
-		)
-	}
-	conn, err := sql.Connect(conf.Driver, conf.Credentials())
-	require.Nil(t, err)
-
-	// Perform all tests in a transaction and always rollback
-	tx, err := conn.Begin()
-	require.Nil(t, err)
-
-	// Create the given schemas
-	for _, table := range tables {
-		_, err = tx.Execute(table.Create())
-		require.Nil(t, err)
-	}
-	return conn, tx
-}
 
 func TestSessions(t *testing.T) {
 	assert := assert.New(t)
-	assert.Equal(Sessions.Name, "sessions")
+	assert.Equal(Sessions.Name(), "sessions")
 
-	conn, tx := initSchemas(t, Users, Sessions, Tokens)
+	// Get a blank DB and create the schemas
+	tx, _ := getConn(t).Must().Begin()
 	defer tx.Rollback()
-	defer conn.Close()
+	initSchema(tx, Users, Sessions, Tokens)
 
 	// Create a new user
 	users := MockUsers(tx)
@@ -63,14 +36,4 @@ func TestSessions(t *testing.T) {
 
 	// Delete a session
 	assert.Nil(session.Delete(), "Deleting a session returned an error")
-
-	// Delete a session that does not exist
-	assert.NotNil(
-		sessions.Delete("DNE"),
-		"Deleting a session that does not exist should error",
-	)
-
-	// Delete a session without an ID
-	assert.NotNil(Session{}.Delete(), "Keyless session delete did not error")
-
 }
