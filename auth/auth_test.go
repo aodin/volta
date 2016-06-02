@@ -16,6 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const travisCI = "host=localhost port=5432 dbname=sol_test user=postgres sslmode=disable"
+
 var testconn *sol.DB
 var once sync.Once
 
@@ -23,7 +25,7 @@ var once sync.Once
 func getConn(t *testing.T) *sol.DB {
 	credentials := os.Getenv("VOLTA_TEST")
 	if credentials == "" {
-		t.Fatalf("No testing database credentials set (VOLTA_TEST)")
+		credentials = travisCI
 	}
 
 	once.Do(func() {
