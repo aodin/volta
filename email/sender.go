@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/smtp"
 
-	"github.com/aodin/volta/config"
+	"github.com/aodin/config"
 )
 
 // Do not use port 465, it expects TLS from the start
@@ -17,7 +17,7 @@ type Sender interface {
 
 // DefaultSender implements the Sender interface.
 type DefaultSender struct {
-	c config.SMTPConfig
+	c config.SMTP
 }
 
 // Send sends the given body to the to address with the given subject.
@@ -51,6 +51,6 @@ func (sender DefaultSender) Send(to, subject, body string) error {
 }
 
 // NewSender returns a new DefaultSender that uses the given SMTP config.
-func NewSender(c config.SMTPConfig) DefaultSender {
+func NewSender(c config.SMTP) DefaultSender {
 	return DefaultSender{c: c}
 }
