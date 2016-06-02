@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const travisCI = "host=localhost port=5432 dbname=sol_test user=postgres sslmode=disable"
+const travisCI = "host=localhost port=5432 dbname=volta_test user=postgres sslmode=disable"
 
 var testconn *sol.DB
 var once sync.Once
